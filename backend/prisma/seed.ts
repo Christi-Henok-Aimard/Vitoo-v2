@@ -1,15 +1,18 @@
 /**
- * Seed de démonstration — idempotent.
- * Une compagnie, un véhicule, un chauffeur, deux trajets à dates futures
- * (pour que le scheduler de rappels puisse être démontré).
- * Aucun secret réel : mots de passe factices réservés au développement.
+ * ⚠️ TEST LOCAL UNIQUEMENT — ne pas exécuter en production.
+ *
+ * Seed idempotent : une compagnie fictive, un véhicule et deux trajets futurs
+ * pour tester le scheduler de rappels. AUCUN passager ni chauffeur n'est créé :
+ * les compagnies, passagers et chauffeurs doivent venir de vrais formulaires.
+ * Aucun secret réel : le mot de passe ci-dessous est factice et réservé au test.
  */
 import { randomBytes, scryptSync } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
+import { normalizeMethods } from '../src/paymentMethods.js';
 
 const prisma = new PrismaClient();
 
-// scrypt maison : salt:hashHex (identique à src/auth.ts)
+/** scrypt maison : salt:hashHex (identique à src/auth.ts). */
 const hashPassword = (password: string): string => {
   const salt = randomBytes(16).toString('hex');
   const hash = scryptSync(password, salt, 64).toString('hex');
@@ -20,10 +23,9 @@ const DAY = 24 * 60 * 60 * 1000;
 
 async function main(): Promise<void> {
   const companyPhone = '+225000000001';
-  const driverPhone = '+225000000002';
   const demoPassword = 'password123';
 
-  // Compagnie
+  // Compagnie de test (aucun passager ni chauffeur).
   const company = await prisma.user.upsert({
     where: { phone: companyPhone },
     update: {},
@@ -38,11 +40,11 @@ async function main(): Promise<void> {
       companyName: 'Vitoo Demo',
       rccm: 'CI-DEMO-0001',
       taxId: 'TAX-DEMO-0001',
-      paymentMethods: JSON.stringify(['Espèces', 'Wave', 'Orange Money']),
+      paymentMethods: JSON.stringify(normalizeMethods(['Espèces', 'Wave', 'Orange Money'])),
     },
   });
 
-  // Véhicule (pas de contrainte d'unicité sur la plaque : on cherche d'abord)
+  // Véhicule (pas de contrainte d'unicité sur la plaque : on cherche d'abord).
   let vehicle = await prisma.vehicle.findFirst({
     where: { companyId: company.id, plateNumber: 'AB-1234-XX' },
   });
@@ -59,45 +61,19 @@ async function main(): Promise<void> {
     });
   }
 
-  // Chauffeur (User role=driver + Driver)
-  let driverUser = await prisma.user.findUnique({ where: { phone: driverPhone } });
-  if (!driverUser) {
-    driverUser = await prisma.user.create({
-      data: {
-        firstName: 'Koffi',
-        lastName: 'Diallo',
-        phone: driverPhone,
-        passwordHash: hashPassword(demoPassword),
-        role: 'driver',
-        city: 'Abidjan',
-      },
-    });
-  }
-  let driver = await prisma.driver.findUnique({ where: { userId: driverUser.id } });
-  if (!driver) {
-    driver = await prisma.driver.create({
-      data: {
-        userId: driverUser.id,
-        companyId: company.id,
-        licenseNumber: 'PERMIS-DEMO-001',
-        status: 'available',
-      },
-    });
-  }
-
-  // Évite le doublon « Gare de Gare de Adjame » sur les anciennes données de démo
+  // Évite le doublon « Gare de Gare de Adjame » sur les anciennes données de démo.
   await prisma.trip.updateMany({
     where: { companyId: company.id, station: { startsWith: 'Gare de ' } },
     data: { station: 'Adjame' },
   });
 
-  // Deux trajets futures (rappels 48h/24h/6h/2h/10m démontrables)
+  // Deux trajets futurs, sans chauffeur attribué (rappels 48h/24h/6h/2h/10m).
   const existingTrips = await prisma.trip.count({ where: { companyId: company.id } });
   if (existingTrips === 0) {
     await prisma.trip.create({
       data: {
         companyId: company.id,
-        driverId: driver.id,
+        driverId: null,
         vehicleId: vehicle.id,
         depart: 'Abidjan',
         arrivee: 'Bouaké',
@@ -107,7 +83,7 @@ async function main(): Promise<void> {
         duration: '4h',
         price: 3500,
         availableSeats: 25,
-        paymentMethods: JSON.stringify(['Espèces', 'Wave', 'Orange Money']),
+        paymentMethods: JSON.stringify(normalizeMethods(['Espèces', 'Wave', 'Orange Money'])),
         stops: JSON.stringify(['Yamoussoukro']),
         status: 'scheduled',
       },
@@ -115,7 +91,7 @@ async function main(): Promise<void> {
     await prisma.trip.create({
       data: {
         companyId: company.id,
-        driverId: driver.id,
+        driverId: null,
         vehicleId: vehicle.id,
         depart: 'Abidjan',
         arrivee: 'Korhogo',
@@ -125,14 +101,14 @@ async function main(): Promise<void> {
         duration: '7h',
         price: 5000,
         availableSeats: 20,
-        paymentMethods: JSON.stringify(['Espèces', 'Wave']),
+        paymentMethods: JSON.stringify(normalizeMethods(['Espèces', 'Wave'])),
         stops: JSON.stringify(['Bouaké', 'Ferkessédougou']),
         status: 'scheduled',
       },
     });
   }
 
-  console.log('[seed] Terminé : compagnie, véhicule, chauffeur et 2 trajets futures prêts.');
+  console.log('[seed] Terminé : compagnie, véhicule et 2 trajets futurs prêts (test local).');
 }
 
 main()

@@ -6,7 +6,7 @@ import { Loading } from '../lib/ui';
 export type GuardSpace = 'passenger' | 'company' | 'driver' | 'admin';
 
 export function Guard({ space, children }: { space: GuardSpace; children: ReactNode }) {
-  const { ready, userSession, companySession, driverSession } = useApp();
+  const { ready, userSession, companySession } = useApp();
   if (!ready) return <Loading />;
 
   if (space === 'passenger' || space === 'admin') {
@@ -20,6 +20,7 @@ export function Guard({ space, children }: { space: GuardSpace; children: ReactN
     if (!companySession || companySession.user.role !== 'company') return <Navigate to="/company" replace />;
     return <>{children}</>;
   }
-  if (!driverSession) return <Navigate to="/driver" replace />;
+  // L'espace chauffeur est exposé via driverSpace dans la session passager.
+  if (!userSession?.driverSpace) return <Navigate to="/passenger/profile" replace />;
   return <>{children}</>;
 }

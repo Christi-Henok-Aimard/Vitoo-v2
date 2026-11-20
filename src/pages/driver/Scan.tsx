@@ -26,8 +26,8 @@ function extractCode(raw: string): string {
 }
 
 export function DriverScanPage() {
-  const { driverSession, toast } = useApp();
-  const token = driverSession!.token;
+  const { userSession, toast } = useApp();
+  const token = userSession!.token;
   const [params] = useSearchParams();
   const tripId = params.get('tripId') || '';
   const [mode, setMode] = useState<'manual' | 'camera'>('manual');

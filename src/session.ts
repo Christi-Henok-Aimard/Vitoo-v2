@@ -1,12 +1,12 @@
-// Gestion des sessions localStorage (une session par espace)
-import type { Driver, User } from './types';
+// Gestion des sessions localStorage. Plus de session chauffeur séparée :
+// l'espace chauffeur vit dans vitoo_session via `driverSpace`.
+import type { DriverSpace, User } from './types';
 
-export type Space = 'user' | 'company' | 'driver';
+export type Space = 'user' | 'company';
 
 const KEYS: Record<Space, string> = {
-  user: 'vitoo_session', // passager ET admin
+  user: 'vitoo_session', // passager, admin et chauffeur via driverSpace
   company: 'vitoo_company_session',
-  driver: 'vitoo_driver_session',
 };
 
 export const SESSION_EVENT = 'vitoo:session-changed';
@@ -14,14 +14,14 @@ export const SESSION_EVENT = 'vitoo:session-changed';
 export interface UserSession {
   token: string;
   user: User;
+  driverSpace?: DriverSpace | null;
 }
 
-export interface DriverSession {
+export interface AuthLikeResult {
+  user: User;
   token: string;
-  driver: Driver;
+  driverSpace?: DriverSpace | null;
 }
-
-export type AnySession = UserSession | DriverSession;
 
 function safeParse<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -32,19 +32,26 @@ function safeParse<T>(raw: string | null): T | null {
   }
 }
 
+/** Construit une session à partir d'une réponse d'auth (champs normalisés). */
+export function makeUserSession(result: AuthLikeResult): UserSession {
+  const space = result.driverSpace ?? result.user.driverSpace ?? null;
+  return {
+    token: result.token,
+    user: { ...result.user, driverSpace: space },
+    driverSpace: space,
+  };
+}
+
 export function readUserSession(): UserSession | null {
   const s = safeParse<UserSession>(localStorage.getItem(KEYS.user));
-  return s && s.token && s.user ? s : null;
+  if (!s || !s.token || !s.user) return null;
+  const space = s.driverSpace ?? s.user.driverSpace ?? null;
+  return { ...s, user: { ...s.user, driverSpace: space }, driverSpace: space };
 }
 
 export function readCompanySession(): UserSession | null {
   const s = safeParse<UserSession>(localStorage.getItem(KEYS.company));
   return s && s.token && s.user ? s : null;
-}
-
-export function readDriverSession(): DriverSession | null {
-  const s = safeParse<DriverSession>(localStorage.getItem(KEYS.driver));
-  return s && s.token && s.driver ? s : null;
 }
 
 export function writeUserSession(s: UserSession): void {
@@ -57,14 +64,9 @@ export function writeCompanySession(s: UserSession): void {
   notify();
 }
 
-export function writeDriverSession(s: DriverSession): void {
-  localStorage.setItem(KEYS.driver, JSON.stringify(s));
-  notify();
-}
-
 export function updateUserSessionUser(user: User): void {
   const s = readUserSession();
-  if (s) writeUserSession({ ...s, user });
+  if (s) writeUserSession({ ...s, user, driverSpace: user.driverSpace ?? s.driverSpace });
 }
 
 export function updateCompanySessionUser(user: User): void {
@@ -80,6 +82,11 @@ export function clearSession(space: Space): void {
 export function clearAllSessions(): void {
   (Object.keys(KEYS) as Space[]).forEach((k) => localStorage.removeItem(KEYS[k]));
   notify();
+}
+
+// Nettoyage d'une ancienne session chauffeur éventuellement présente.
+export function removeLegacyDriverSession(): void {
+  localStorage.removeItem('vitoo_driver_session');
 }
 
 function notify(): void {

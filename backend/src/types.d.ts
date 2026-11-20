@@ -5,6 +5,8 @@ declare global {
   namespace Express {
     interface Request {
       user?: User;
+      /** Alias explicite utilisé par les espaces chauffeur (token passager). */
+      authUser?: User;
       rawBody?: Buffer;
     }
   }

@@ -2,7 +2,9 @@ import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Building2, CarFront, Globe2, LogOut, Moon, Palette, Sun, UserCog } from 'lucide-react';
 import { auth, errorMessage, parseList } from '../../api';
+import { PaymentChips } from '../../components/PaymentChips';
 import { useApp } from '../../lib/context';
+import { normalizeMethods } from '../../paymentMethods';
 import { updateCompanySessionUser } from '../../session';
 import { Field, Notice, PageHeader } from '../../lib/ui';
 
@@ -22,13 +24,14 @@ export function CompanyProfilePage() {
     companyLogo: u.companyLogo || '',
     primaryColor: u.primaryColor || '#1d5df5',
     secondaryColor: u.secondaryColor || '#16a34a',
-    paymentMethods: parseList(u.paymentMethods).join(', ') || 'Espèces',
+    paymentMethods: normalizeMethods(parseList(u.paymentMethods)),
   });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
-  const set = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) =>
+  const set = (k: Exclude<keyof typeof form, 'paymentMethods'>) => (e: ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [k]: e.target.value }));
+  const setMethods = (paymentMethods: string[]) => setForm((prev) => ({ ...prev, paymentMethods }));
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
@@ -48,9 +51,10 @@ export function CompanyProfilePage() {
         companyLogo: form.companyLogo.trim() || undefined,
         primaryColor: form.primaryColor.trim() || undefined,
         secondaryColor: form.secondaryColor.trim() || undefined,
-        paymentMethods: form.paymentMethods.split(',').map((x) => x.trim()).filter(Boolean),
+        paymentMethods: form.paymentMethods,
       });
       updateCompanySessionUser(res.user);
+      setForm((prev) => ({ ...prev, paymentMethods: normalizeMethods(parseList(res.user.paymentMethods)) }));
       setMsg('Informations enregistrées.');
       toast('Profil compagnie mis à jour.', 'success');
     } catch (error) {
@@ -105,7 +109,7 @@ export function CompanyProfilePage() {
               <Field label="Couleur primaire"><input className="input" type="color" value={form.primaryColor} onChange={set('primaryColor')} style={{ padding: 4, height: 42 }} /></Field>
               <Field label="Couleur secondaire"><input className="input" type="color" value={form.secondaryColor} onChange={set('secondaryColor')} style={{ padding: 4, height: 42 }} /></Field>
             </div>
-            <Field label="Moyens de paiement" hint="Séparés par des virgules"><input className="input" value={form.paymentMethods} onChange={set('paymentMethods')} /></Field>
+            <PaymentChips value={form.paymentMethods} onChange={setMethods} />
             <div className="notice notice-info">Cliquez sur « Enregistrer » pour appliquer ces changements.</div>
           </div>
 

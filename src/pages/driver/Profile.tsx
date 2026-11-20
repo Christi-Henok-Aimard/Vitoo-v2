@@ -4,17 +4,15 @@ import { AlertTriangle, CheckCircle2, ClipboardList, Globe2, LogOut, Moon, Sun, 
 import { driverApi, errorMessage } from '../../api';
 import { useApp } from '../../lib/context';
 import { useAsync, usePolling } from '../../lib/hooks';
-import { writeDriverSession } from '../../session';
 import { formatDate } from '../../lib/format';
 import { Empty, ErrorView, Field, Loading, Notice, PageHeader, StatCard } from '../../lib/ui';
 import { GridCards } from '../../components/AppShell';
 import type { DriverStats, Incident } from '../../types';
 
 export function DriverProfilePage() {
-  const { driverSession, theme, toggleTheme, lang, toggleLang, logoutDriver, toast } = useApp();
+  const { userSession, driverInfo, refreshDriverInfo, theme, toggleTheme, lang, toggleLang, logoutUser, toast } = useApp();
   const navigate = useNavigate();
-  const token = driverSession!.token;
-  const driver = driverSession!.driver;
+  const token = userSession!.token;
   const stats = useAsync(() => driverApi.stats(token), [token], {} as DriverStats);
   const [busy, setBusy] = useState(false);
 
@@ -23,8 +21,8 @@ export function DriverProfilePage() {
   const changeStatus = async (status: string) => {
     setBusy(true);
     try {
-      const res = await driverApi.status(token, status);
-      writeDriverSession({ token, driver: res.driver });
+      await driverApi.status(token, status);
+      await refreshDriverInfo();
       toast('Disponibilité mise à jour.', 'success');
     } catch (err) {
       toast(errorMessage(err), 'error');
@@ -33,27 +31,29 @@ export function DriverProfilePage() {
     }
   };
 
+  const name = `${driverInfo?.user?.firstName || driverInfo?.firstName || ''} ${driverInfo?.user?.lastName || driverInfo?.lastName || ''}`.trim();
+
   return (
     <>
-      <PageHeader title="Mon profil" subtitle="Disponibilité, statistiques et préférences." />
+      <PageHeader title="Mon profil chauffeur" subtitle="Disponibilité, statistiques et préférences." />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, alignItems: 'start' }}>
         <div className="card card-pad">
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <span className="stat-icon" style={{ background: 'var(--primary-soft)', color: 'var(--primary)', width: 50, height: 50 }}><UserRound size={23} /></span>
             <div>
-              <strong style={{ fontSize: 18 }}>{driver.user?.firstName} {driver.user?.lastName}</strong>
-              <div className="muted" style={{ fontSize: 12 }}>{driver.user?.phone}</div>
+              <strong style={{ fontSize: 18 }}>{name || 'Chauffeur'}</strong>
+              <div className="muted" style={{ fontSize: 12 }}>{driverInfo?.user?.phone || driverInfo?.phone || userSession?.user.phone}</div>
             </div>
           </div>
           <div className="divider" />
           <div className="label">Disponibilité</div>
-          <select className="select" value={driver.status} disabled={busy} onChange={(e) => void changeStatus(e.target.value)}>
+          <select className="select" value={driverInfo?.status || 'available'} disabled={busy} onChange={(e) => void changeStatus(e.target.value)}>
             <option value="available">Disponible</option>
             <option value="on_trip">En mission</option>
             <option value="off_duty">En repos</option>
           </select>
           <div className="divider" />
-          <div className="muted" style={{ fontSize: 12 }}>Permis : <strong style={{ color: 'var(--text)' }}>{driver.licenseNumber || 'Non renseigné'}</strong></div>
+          <div className="muted" style={{ fontSize: 12 }}>Permis : <strong style={{ color: 'var(--text)' }}>{driverInfo?.licenseNumber || 'Non renseigné'}</strong></div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
             <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />} Thème sombre</span>
             <button className={`btn btn-sm ${theme === 'dark' ? 'btn-secondary' : ''}`} onClick={toggleTheme}>{theme === 'dark' ? 'Activé' : 'Désactivé'}</button>
@@ -63,7 +63,9 @@ export function DriverProfilePage() {
             <button className="btn btn-sm btn-secondary" onClick={toggleLang}>{lang.toUpperCase()} · Changer</button>
           </div>
           <div className="divider" />
-          <button className="btn btn-danger btn-block" onClick={() => { logoutDriver(); navigate('/driver', { replace: true }); }}><LogOut size={16} /> Se déconnecter</button>
+          <button className="btn btn-block" onClick={() => navigate('/passenger/profile')}>Retour au profil passager</button>
+          <div style={{ height: 8 }} />
+          <button className="btn btn-danger btn-block" onClick={() => { logoutUser(); navigate('/passenger', { replace: true }); }}><LogOut size={16} /> Se déconnecter</button>
         </div>
 
         <div>
@@ -89,8 +91,8 @@ export function DriverProfilePage() {
 }
 
 function IncidentsList({ limit }: { limit?: number }) {
-  const { driverSession } = useApp();
-  const token = driverSession!.token;
+  const { userSession } = useApp();
+  const token = userSession!.token;
   const { data, loading, error, reload } = useAsync(() => driverApi.incidents(token), [token], { incidents: [] as Incident[] });
   if (loading) return <Loading />;
   if (error) return <ErrorView message={error} retry={() => void reload()} />;
@@ -115,8 +117,8 @@ function IncidentsList({ limit }: { limit?: number }) {
 }
 
 export function DriverIncidentsPage({ embedded = false }: { embedded?: boolean }) {
-  const { driverSession, toast } = useApp();
-  const token = driverSession!.token;
+  const { userSession, toast } = useApp();
+  const token = userSession!.token;
   const { data, loading, error, reload } = useAsync(() => driverApi.incidents(token), [token], { incidents: [] as Incident[] });
   const [type, setType] = useState('Retard');
   const [description, setDescription] = useState('');

@@ -1,10 +1,12 @@
+import { useCallback, useState } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { BarChart3, BusFront, CarFront, ClipboardList, Home, LayoutDashboard, QrCode, ScanLine, Ticket, UserCog, Users } from 'lucide-react';
 import { Guard } from './components/Guard';
 import { AppShell, type NavItem } from './components/AppShell';
-import { Loading } from './lib/ui';
+import { Splash } from './components/Splash';
 import { useApp } from './lib/context';
-import { AdminLogin, CompanyAuth, DriverLogin, PassengerAuth } from './pages/Auth';
+import { Loading } from './lib/ui';
+import { AdminLogin, CompanyAuth, PassengerAuth } from './pages/Auth';
 import { SearchPage } from './pages/passenger/Search';
 import { TripDetailPage } from './pages/passenger/TripDetail';
 import { BookingPage } from './pages/passenger/Booking';
@@ -97,12 +99,6 @@ function CompanyEntry() {
   return companySession ? <Navigate to="/company/overview" replace /> : <CompanyAuth mode="login" />;
 }
 
-function DriverEntry() {
-  const { ready, driverSession } = useApp();
-  if (!ready) return <Loading />;
-  return driverSession ? <Navigate to="/driver/missions" replace /> : <DriverLogin />;
-}
-
 function AdminEntry() {
   const { ready, userSession } = useApp();
   if (!ready) return <Loading />;
@@ -111,8 +107,12 @@ function AdminEntry() {
 }
 
 export default function App() {
+  const [splash, setSplash] = useState(true);
+  const closeSplash = useCallback(() => setSplash(false), []);
+
   return (
     <>
+      {splash && <Splash onDone={closeSplash} />}
       <Routes>
         <Route path="/" element={<Navigate to="/passenger" replace />} />
 
@@ -146,9 +146,8 @@ export default function App() {
           <Route path="profile" element={<CompanyProfilePage />} />
         </Route>
 
-        {/* Espace chauffeur */}
-        <Route path="/driver" element={<DriverEntry />} />
-        <Route path="/driver/login" element={<DriverLogin />} />
+        {/* Espace chauffeur : accès depuis le profil passager, pas de /driver/login */}
+        <Route path="/driver" element={<Navigate to="/driver/missions" replace />} />
         <Route path="/driver" element={<Guard space="driver"><DriverLayout /></Guard>}>
           <Route path="missions" element={<DriverMissionsPage />} />
           <Route path="missions/:id" element={<DriverMissionDetailPage />} />

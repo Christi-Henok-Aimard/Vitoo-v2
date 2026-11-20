@@ -1,8 +1,10 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { Edit2, Eye, Plus, Trash2, Users } from 'lucide-react';
 import { companyApi, errorMessage, parseList } from '../../api';
+import { PaymentChips } from '../../components/PaymentChips';
 import { useApp } from '../../lib/context';
 import { useAsync, usePolling } from '../../lib/hooks';
+import { normalizeMethods } from '../../paymentMethods';
 import { formatDate, formatMoney, todayInput, tripStops } from '../../lib/format';
 import { ConfirmModal, Empty, ErrorView, Field, Loading, Modal, Notice, PageHeader, StatusBadge } from '../../lib/ui';
 import type { Driver, Trip, Vehicle } from '../../types';
@@ -19,12 +21,12 @@ interface TripForm {
   driverId: string;
   vehicleId: string;
   stops: string;
-  paymentMethods: string;
+  paymentMethods: string[];
 }
 
 const emptyForm: TripForm = {
   depart: '', arrivee: '', station: '', date: todayInput(), time: '08:00', duration: '',
-  price: '', availableSeats: '', driverId: '', vehicleId: '', stops: '', paymentMethods: 'Espèces',
+  price: '', availableSeats: '', driverId: '', vehicleId: '', stops: '', paymentMethods: ['Espèces'],
 };
 
 export function CompanyTripsPage() {
@@ -42,8 +44,9 @@ export function CompanyTripsPage() {
 
   usePolling(reload, 15000);
 
-  const set = (k: keyof TripForm) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  const set = (k: Exclude<keyof TripForm, 'paymentMethods'>) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((prev) => ({ ...prev, [k]: e.target.value }));
+  const setMethods = (paymentMethods: string[]) => setForm((prev) => ({ ...prev, paymentMethods }));
 
   const openEdit = (trip: Trip | 'new') => {
     setFormError('');
@@ -60,7 +63,7 @@ export function CompanyTripsPage() {
       driverId: trip.driverId || '',
       vehicleId: trip.vehicleId || '',
       stops: tripStops(trip).join(', '),
-      paymentMethods: parseList(trip.paymentMethods).join(', ') || 'Espèces',
+      paymentMethods: normalizeMethods(parseList(trip.paymentMethods)),
     });
     setEditing(trip);
   };
@@ -81,7 +84,7 @@ export function CompanyTripsPage() {
       driverId: form.driverId || null,
       vehicleId: form.vehicleId || null,
       stops: form.stops.split(',').map((s) => s.trim()).filter(Boolean),
-      paymentMethods: form.paymentMethods.split(',').map((s) => s.trim()).filter(Boolean),
+      paymentMethods: form.paymentMethods,
     };
     try {
       if (editing === 'new') await companyApi.createTrip(token, body);
@@ -191,7 +194,10 @@ export function CompanyTripsPage() {
               </Field>
             </div>
             <Field label="Escales" hint="Séparées par des virgules"><input className="input" value={form.stops} onChange={set('stops')} placeholder="Bouaké, Yamoussoukro" /></Field>
-            <Field label="Moyens de paiement" hint="Séparés par des virgules"><input className="input" value={form.paymentMethods} onChange={set('paymentMethods')} /></Field>
+            <PaymentChips value={form.paymentMethods} onChange={setMethods} />
+            <div className="notice notice-info" style={{ marginTop: 8 }}>
+              Récapitulatif : {normalizeMethods(form.paymentMethods).join(', ')}
+            </div>
           </form>
         </Modal>
       )}

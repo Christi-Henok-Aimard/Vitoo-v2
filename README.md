@@ -10,7 +10,7 @@ Paiement en ligne : **GeniusPay**.
 |---|---|
 | **Passager** | Rechercher un trajet → réserver → payer → obtenir son billet QR/PDF → recevoir des rappels (2 j, 24 h, 6 h, 2 h, 10 min), être informé quand son billet est scanné, quand le car décolle, à chaque escale et à l'arrivée → noter la compagnie et le chauffeur. |
 | **Compagnie** | Trajets, chauffeurs, véhicules, vente au guichet, statistiques, marque blanche. |
-| **Chauffeur** | Missions, scan QR du billet, démarrage/fin de trajet, escale, incidents, statistiques. |
+| **Chauffeur** | Un passager promu par sa compagnie : il garde son compte passager et accède à son espace chauffeur depuis son profil. Missions, scan QR, démarrage/fin de trajet, escale, incidents, statistiques. |
 | **Admin** | Statistiques globales, liste des utilisateurs, bannir/supprimer. |
 
 ## Démarrage en local
@@ -32,18 +32,18 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
-### Comptes de démonstration (créés par le seed)
+### Création des comptes (réel)
 
-| Espace | Identifiant | Mot de passe |
-|---|---|---|
-| Compagnie | `company@vitoo.demo` | `password123` |
-| Chauffeur | `+225000000002` | `password123` |
-| Admin | `+225000000003` | `admin12345` (défini dans `backend/.env`) |
-| Passager | Créez un compte depuis `/passenger/register` | — |
+- **Passager** : `/passenger/register` (téléphone + mot de passe) ou connexion Google si `VITE_GOOGLE_CLIENT_ID` est renseigné.
+- **Compagnie** : `/company/register` (nom, RCCM, identifiant fiscal, ville, responsable, e-mail, mot de passe).
+- **Chauffeur** : il possède **d'abord un compte passager**. Dans l'espace compagnie → « Équipe & flotte », cherchez son numéro de téléphone, puis cliquez sur « Ajouter comme chauffeur ». S'il n'a pas encore de compte, invitez-le à s'inscrire comme passager. Ensuite, depuis son profil passager, il clique sur « Accéder à mon espace chauffeur ».
+- **Admin** : compte créé automatiquement au démarrage du backend si `ADMIN_BOOTSTRAP_PHONE` et `ADMIN_BOOTSTRAP_PASSWORD` sont définis.
 
-Le seed crée aussi 2 trajets futurs (Abidjan→Bouaké dans 2 jours, Abidjan→Korhogo dans 7 jours) pour démontrer les rappels automatiques.
+> Le seed (`npm run seed`) est **réservé au test local** : il ne crée aucun passager ni chauffeur. Ne l'exécutez pas en production.
 
-> Pour la démonstration, choisissez le paiement **Espèces** : le billet et les notifications sont créés immédiatement. Le paiement en ligne GeniusPay nécessite des clés API (sinon le backend répond 503, volontairement, pour éviter les faux billets).
+### Moyens de paiement
+
+La compagnie active ses moyens depuis son profil et ses trajets via des **boutons** : Espèces, Wave, Orange Money, MTN MoMo, Moov Money, Carte bancaire. Le passager ne voit que les moyens activés pour le trajet choisi. « Espèces » crée le billet immédiatement (paiement à l'embarquement) ; les autres moyens redirigent vers GeniusPay. Sans clés GeniusPay, le backend répond 503 volontairement — aucun faux billet n'est créé.
 
 ## Variables d'environnement
 

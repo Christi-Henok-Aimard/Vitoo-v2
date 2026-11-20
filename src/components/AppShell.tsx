@@ -45,21 +45,18 @@ export function AppShell({
   profileTo?: string;
   accentColor?: string;
 }) {
-  const { theme, toggleTheme, lang, toggleLang, logoutUser, logoutCompany, logoutDriver, userSession, companySession, driverSession } = useApp();
+  const { theme, toggleTheme, lang, toggleLang, logoutUser, logoutCompany, userSession, companySession } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const session = space === 'company' ? companySession : space === 'driver' ? driverSession : userSession;
-  const user = space === 'driver' ? driverSession?.driver?.user : session && 'user' in session ? session.user : null;
-  const displayName = space === 'driver'
-    ? `${driverSession?.driver?.user?.firstName || ''} ${driverSession?.driver?.user?.lastName || ''}`.trim() || 'Chauffeur'
-    : `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Mon compte';
+  const session = space === 'company' ? companySession : userSession;
+  const user = session?.user ?? null;
+  const displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Mon compte';
 
   const logout = () => {
     if (space === 'company') logoutCompany();
-    else if (space === 'driver') logoutDriver();
     else logoutUser();
-    navigate(space === 'company' ? '/company' : space === 'driver' ? '/driver' : space === 'admin' ? '/admin' : '/passenger', { replace: true });
+    navigate(space === 'company' ? '/company' : space === 'admin' ? '/admin' : '/passenger', { replace: true });
   };
 
   const switcher = (

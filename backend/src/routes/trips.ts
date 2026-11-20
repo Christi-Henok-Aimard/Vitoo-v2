@@ -13,6 +13,7 @@ import {
   notifyBookingConfirmed,
   runReminderScheduler,
 } from '../notifications.js';
+import { canonicalMethod, isOnlineMethod } from '../paymentMethods.js';
 
 export const tripsRouter = Router();
 
@@ -260,16 +261,16 @@ tripsRouter.post('/:id/bookings', optionalAuth, async (request, response) => {
   if (!trip) return response.status(404).json({ message: 'Trajet introuvable.' });
 
   const rawMethod = str(body.paymentMethod) || 'Espèces';
-  // On ignore les accents pour accepter « Espèces » comme « especes ».
-  const normalizedMethod = rawMethod
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-  const isCash = ['especes', 'espece', 'cash', 'liquide'].includes(normalizedMethod);
-  if (!isCash) {
+  const method = canonicalMethod(rawMethod);
+  const tripMethods = parseStringArray(trip.paymentMethods, ['Espèces']);
+  if (!method || !tripMethods.includes(method)) {
+    return response.status(400).json({ message: 'Ce moyen de paiement n’est pas proposé sur ce trajet.' });
+  }
+  // La réservation directe est réservée aux espèces ; le reste passe par GeniusPay.
+  if (isOnlineMethod(method)) {
     return response
       .status(400)
-      .json({ message: 'Seul le paiement en espèces est accepté ici. Utilisez le paiement en ligne.' });
+      .json({ message: 'Moyen en ligne : utilisez le paiement GeniusPay pour réserver.' });
   }
   const passengerName = str(body.passengerName);
   const passengerPhone = str(body.passengerPhone);

@@ -4,7 +4,6 @@ import { ClipboardList, MapPin, Users } from 'lucide-react';
 import { driverApi, errorMessage } from '../../api';
 import { useApp } from '../../lib/context';
 import { useAsync, usePolling } from '../../lib/hooks';
-import { writeDriverSession } from '../../session';
 import { formatDate, formatMoney } from '../../lib/format';
 import { Empty, ErrorView, Loading, Notice, PageHeader, StatusBadge } from '../../lib/ui';
 import type { Trip } from '../../types';
@@ -12,9 +11,8 @@ import type { Trip } from '../../types';
 type Tab = 'active' | 'upcoming' | 'completed' | 'all';
 
 export function DriverMissionsPage() {
-  const { driverSession, toast } = useApp();
-  const token = driverSession!.token;
-  const driver = driverSession!.driver;
+  const { userSession, driverInfo, refreshDriverInfo, toast } = useApp();
+  const token = userSession!.token;
   const { data, loading, error, reload } = useAsync(() => driverApi.trips(token), [token], { trips: [] as Trip[] });
   const [tab, setTab] = useState<Tab>('active');
   const [statusBusy, setStatusBusy] = useState(false);
@@ -24,8 +22,8 @@ export function DriverMissionsPage() {
   const changeStatus = async (status: string) => {
     setStatusBusy(true);
     try {
-      const res = await driverApi.status(token, status);
-      writeDriverSession({ token, driver: res.driver });
+      await driverApi.status(token, status);
+      await refreshDriverInfo();
       toast('Disponibilité mise à jour.', 'success');
     } catch (err) {
       toast(errorMessage(err), 'error');
@@ -38,6 +36,7 @@ export function DriverMissionsPage() {
   const upcoming = data.trips.filter((t) => t.status === 'scheduled');
   const completed = data.trips.filter((t) => t.status === 'completed');
   const filtered = tab === 'all' ? data.trips : tab === 'active' ? active : tab === 'upcoming' ? upcoming : completed;
+  const driverName = `${driverInfo?.user?.firstName || driverInfo?.firstName || ''} ${driverInfo?.user?.lastName || driverInfo?.lastName || ''}`.trim();
 
   if (loading) return <Loading label="Chargement de vos missions…" />;
   if (error) return <ErrorView message={error} retry={() => void reload()} />;
@@ -46,12 +45,12 @@ export function DriverMissionsPage() {
     <>
       <PageHeader
         title="Mes missions"
-        subtitle={`${driver.user?.firstName || ''} ${driver.user?.lastName || ''}`.trim() || 'Chauffeur'}
+        subtitle={driverName || 'Chauffeur'}
         actions={
           <select
             className="select"
             style={{ width: 180 }}
-            value={driver.status}
+            value={driverInfo?.status || 'available'}
             disabled={statusBusy}
             onChange={(e) => void changeStatus(e.target.value)}
           >
@@ -97,7 +96,7 @@ export function DriverMissionsPage() {
           ))}
         </div>
       )}
-      {driver.status === 'off_duty' && <div style={{ marginTop: 14 }}><Notice tone="warning">Vous êtes en repos. Repassez en « Disponible » pour recevoir des missions.</Notice></div>}
+      {driverInfo?.status === 'off_duty' && <div style={{ marginTop: 14 }}><Notice tone="warning">Vous êtes en repos. Repassez en « Disponible » pour recevoir des missions.</Notice></div>}
     </>
   );
 }

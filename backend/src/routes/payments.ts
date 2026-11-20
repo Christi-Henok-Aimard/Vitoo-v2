@@ -11,7 +11,8 @@ import {
   verifyWebhookSignature,
 } from '../geniuspay.js';
 import { findOrCreatePassenger, HttpError } from '../auth.js';
-import { createBookingAndTicket } from './trips.js';
+import { canonicalMethod, isOnlineMethod } from '../paymentMethods.js';
+import { createBookingAndTicket, parseStringArray } from './trips.js';
 
 export const paymentsRouter = Router();
 
@@ -145,9 +146,6 @@ paymentsRouter.post('/webhook/geniuspay', async (request, response) => {
 });
 
 paymentsRouter.post('/initiate', async (request, response) => {
-  if (!isGeniusPayConfigured()) {
-    return response.status(503).json({ message: 'Paiement en ligne indisponible (clés GeniusPay absentes).' });
-  }
   const body = request.body ?? {};
   const tripId = str(body.tripId);
   const passengerName = str(body.passengerName);
@@ -159,9 +157,23 @@ paymentsRouter.post('/initiate', async (request, response) => {
   }
   const trip = await prisma.trip.findUnique({ where: { id: tripId } });
   if (!trip) return response.status(404).json({ message: 'Trajet introuvable.' });
+  const methodName = canonicalMethod(method);
+  const tripMethods = parseStringArray(trip.paymentMethods, ['Espèces']);
+  if (
+    !methodName ||
+    !isOnlineMethod(methodName) ||
+    !tripMethods.includes(methodName)
+  ) {
+    return response.status(400).json({
+      message: 'Moyen de paiement en ligne non autorisé pour ce trajet.',
+    });
+  }
   const seats = Math.max(1, Number(body.seats) || 1);
   if (seats > trip.availableSeats) {
     return response.status(400).json({ message: 'Places insuffisantes.' });
+  }
+  if (!isGeniusPayConfigured()) {
+    return response.status(503).json({ message: 'Paiement en ligne indisponible (clés GeniusPay absentes).' });
   }
   const amount = trip.price * seats;
   const localRef = `gp_${randomBytes(12).toString('hex')}`;

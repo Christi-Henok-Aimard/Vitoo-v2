@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CircleHelp, Globe2, LogOut, Mail, Moon, Phone, Sun, UserRound } from 'lucide-react';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Camera, CarFront, CircleHelp, Globe2, LogOut, Mail, Moon, Phone, ShieldCheck, Sun, UserRound } from 'lucide-react';
 import { auth, errorMessage } from '../../api';
 import { useApp } from '../../lib/context';
 import { updateUserSessionUser } from '../../session';
@@ -22,10 +22,17 @@ export function PassengerProfilePage() {
   const [phone, setPhone] = useState(user.phone);
   const [email, setEmail] = useState(user.email || '');
   const [city, setCity] = useState(user.city || '');
+  const [avatar, setAvatar] = useState(user.avatarUrl || '');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwdBusy, setPwdBusy] = useState(false);
+  const [pwdMsg, setPwdMsg] = useState('');
+  const [pwdErr, setPwdErr] = useState('');
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
@@ -39,6 +46,7 @@ export function PassengerProfilePage() {
         phone: phone.trim(),
         email: email.trim() || undefined,
         city: city.trim() || undefined,
+        avatarUrl: avatar || undefined,
       });
       updateUserSessionUser(res.user);
       setMsg('Profil mis à jour.');
@@ -50,19 +58,70 @@ export function PassengerProfilePage() {
     }
   };
 
+  const pickPhoto = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErr('Choisissez un fichier image.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = String(reader.result || '');
+      setAvatar(url);
+      updateUserSessionUser({ ...user, avatarUrl: url });
+      toast('Photo mise à jour localement. Enregistrez le profil pour la conserver.', 'success');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const changePassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setPwdErr('');
+    setPwdMsg('');
+    if (newPassword.length < 8) {
+      setPwdErr('Le nouveau mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwdErr('Les mots de passe ne correspondent pas.');
+      return;
+    }
+    setPwdBusy(true);
+    try {
+      await auth.patchMe(userSession!.token, {
+        currentPassword,
+        password: newPassword,
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPwdMsg('Mot de passe modifié.');
+      toast('Mot de passe modifié.', 'success');
+    } catch (error) {
+      setPwdErr(errorMessage(error));
+    } finally {
+      setPwdBusy(false);
+    }
+  };
+
   return (
     <>
       <PageHeader title="Mon profil" subtitle="Gérez vos informations et vos préférences." />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, alignItems: 'start' }}>
         <div className="card card-pad">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-            <span className="stat-icon" style={{ background: 'var(--primary-soft)', color: 'var(--primary)', width: 48, height: 48 }}>
-              <UserRound size={22} />
+            <span className="avatar" style={{ width: 52, height: 52, fontSize: 18 }}>
+              {avatar ? <img src={avatar} alt="Ma photo" className="avatar" style={{ width: 52, height: 52 }} /> : <UserRound size={24} />}
             </span>
-            <div>
+            <div style={{ flex: 1 }}>
               <strong style={{ fontSize: 17 }}>{user.firstName} {user.lastName}</strong>
               <div className="muted" style={{ fontSize: 12 }}>{user.phone}</div>
             </div>
+            <label className="btn btn-sm btn-secondary" htmlFor="avatar-input" style={{ cursor: 'pointer' }}>
+              <Camera size={15} /> Photo
+            </label>
+            <input id="avatar-input" type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
           </div>
           {msg && <div style={{ marginBottom: 12 }}><Notice tone="success">{msg}</Notice></div>}
           {err && <div style={{ marginBottom: 12 }}><Notice tone="error">{err}</Notice></div>}
@@ -76,9 +135,45 @@ export function PassengerProfilePage() {
             <Field label="Ville"><input className="input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Abidjan" /></Field>
             <button className="btn btn-primary btn-block" disabled={busy} type="submit">{busy ? 'Enregistrement…' : 'Enregistrer les modifications'}</button>
           </form>
+
+          {user.driverSpace && (
+            <div style={{ marginTop: 16 }}>
+              <div className="divider" />
+              <Link className="btn btn-primary btn-block" to="/driver/missions">
+                <CarFront size={16} /> Accéder à mon espace chauffeur
+              </Link>
+              <div className="muted" style={{ fontSize: 11, marginTop: 6, textAlign: 'center' }}>
+                {user.driverSpace.companyName || 'Espace chauffeur'}
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'grid', gap: 16 }}>
+          <div className="card card-pad">
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+              <ShieldCheck size={18} color="var(--primary)" /> <strong>Changer le mot de passe</strong>
+            </div>
+            {pwdMsg && <div style={{ marginBottom: 12 }}><Notice tone="success">{pwdMsg}</Notice></div>}
+            {pwdErr && <div style={{ marginBottom: 12 }}><Notice tone="error">{pwdErr}</Notice></div>}
+            <form onSubmit={(e) => void changePassword(e)}>
+              <Field label="Mot de passe actuel" required>
+                <input className="input" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+              </Field>
+              <div className="field-row">
+                <Field label="Nouveau mot de passe" required>
+                  <input className="input" type="password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+                </Field>
+                <Field label="Confirmer" required>
+                  <input className="input" type="password" minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                </Field>
+              </div>
+              <button className="btn btn-secondary btn-block" disabled={pwdBusy} type="submit">
+                {pwdBusy ? 'Modification…' : 'Modifier le mot de passe'}
+              </button>
+            </form>
+          </div>
+
           <div className="card card-pad">
             <div className="label" style={{ marginBottom: 10 }}>Préférences</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>

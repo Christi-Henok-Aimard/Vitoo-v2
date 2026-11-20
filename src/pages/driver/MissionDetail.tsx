@@ -11,8 +11,8 @@ import type { Trip } from '../../types';
 export function DriverMissionDetailPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
-  const { driverSession, toast } = useApp();
-  const token = driverSession!.token;
+  const { userSession, toast } = useApp();
+  const token = userSession!.token;
   const { data, loading, error, reload } = useAsync(() => driverApi.trip(token, id), [token, id], { trip: null as Trip | null });
   const [stopName, setStopName] = useState('');
   const [incidentOpen, setIncidentOpen] = useState(false);

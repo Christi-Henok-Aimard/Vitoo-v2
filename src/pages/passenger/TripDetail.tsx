@@ -1,7 +1,8 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, CarFront, Clock, MapPin, Star, Ticket, UserRound } from 'lucide-react';
-import { tripsApi, parseList } from '../../api';
+import { tripsApi } from '../../api';
 import { useAsync } from '../../lib/hooks';
+import { normalizeMethods } from '../../paymentMethods';
 import { companyName, formatDate, formatMoney, tripStops } from '../../lib/format';
 import { Empty, ErrorView, Loading, StatusBadge } from '../../lib/ui';
 import type { Trip } from '../../types';
@@ -17,7 +18,7 @@ export function TripDetailPage() {
   if (!trip) return <Empty icon={Ticket} title="Trajet introuvable" action={<Link className="btn btn-primary" to="/passenger">Retour à la recherche</Link>} />;
 
   const stops = tripStops(trip);
-  const methods = parseList(trip.paymentMethods);
+  const methods = normalizeMethods(trip.paymentMethods);
 
   return (
     <>

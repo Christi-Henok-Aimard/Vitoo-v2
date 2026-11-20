@@ -4,21 +4,29 @@ import type { Request } from 'express';
 import { DriverStatus, TripStatus } from '@prisma/client';
 import type { Driver } from '@prisma/client';
 import { prisma } from '../db.js';
-import { driverView, requireAuth, requireRole, HttpError } from '../auth.js';
+import { driverSpaceFor, driverView, requireAuth, HttpError } from '../auth.js';
 import { notifyTripPassengers } from '../notifications.js';
 import { formatTrip } from './trips.js';
 
 export const driverRouter = Router();
-driverRouter.use(requireAuth, requireRole('driver'));
+// Le chauffeur utilise son token passager : plus de session chauffeur séparée.
+driverRouter.use(requireAuth);
 
 const str = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
-/** Driver lié au token, avec contrôle d'appartenance. */
+/** Driver lié au token passager, avec contrôle d'appartenance. */
 const myDriver = async (request: Request): Promise<Driver> => {
-  const driver = await prisma.driver.findUnique({ where: { userId: request.user!.id } });
+  const driver = await prisma.driver.findUnique({ where: { userId: request.authUser!.id } });
   if (!driver) throw new HttpError(403, 'Profil chauffeur introuvable.');
   return driver;
 };
+
+/** Informations chauffeur + compagnie, pour rafraîchir l'espace chauffeur. */
+driverRouter.get('/me', async (request, response) => {
+  const driver = await myDriver(request);
+  const space = await driverSpaceFor(request.authUser!.id);
+  return response.json({ driver: await driverView(driver), companyName: space?.companyName ?? '' });
+});
 
 const ownedTrip = async (request: Request, tripId: string) => {
   const driver = await myDriver(request);

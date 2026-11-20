@@ -1,24 +1,103 @@
-import { useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BusFront, LockKeyhole, ShieldCheck } from 'lucide-react';
-import { auth, errorMessage } from '../api';
+import { ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { auth, errorMessage, type AuthResult } from '../api';
+import { GlassBackdrop } from '../components/Splash';
 import { useApp } from '../lib/context';
+import { makeUserSession } from '../session';
 import { Field, Notice } from '../lib/ui';
 
-function AuthLayout({ title, subtitle, children, footer }: { title: string; subtitle: string; children: ReactNode; footer?: ReactNode }) {
+const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() || '';
+
+/* ---------------------- Google Identity Services ----------------------- */
+
+interface GoogleCredentialResponse {
+  credential?: string;
+}
+interface GoogleIdApi {
+  initialize: (options: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void;
+  renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
+}
+interface GoogleSdk {
+  accounts: { id: GoogleIdApi };
+}
+declare global {
+  interface Window {
+    google?: GoogleSdk;
+  }
+}
+
+function GoogleButton({ onCredential }: { onCredential: (idToken: string) => void }) {
+  const holder = useRef<HTMLDivElement>(null);
+  const handler = useRef(onCredential);
+  handler.current = onCredential;
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || !holder.current) return;
+    let cancelled = false;
+    const render = () => {
+      if (cancelled || !holder.current || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (response) => {
+          if (response.credential) handler.current(response.credential);
+        },
+      });
+      window.google.accounts.id.renderButton(holder.current, {
+        theme: 'outline',
+        size: 'large',
+        width: 320,
+        text: 'continue_with',
+      });
+    };
+    if (window.google?.accounts?.id) {
+      render();
+    } else {
+      let script = document.querySelector<HTMLScriptElement>('script[data-vitoo-gis]');
+      if (!script) {
+        script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.dataset.vitooGis = '1';
+        document.head.appendChild(script);
+      }
+      script.addEventListener('load', render, { once: true });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!GOOGLE_CLIENT_ID) return null;
+  return <div className="google-button" ref={holder} />;
+}
+
+/* --------------------------- Mise en page ------------------------------ */
+
+function AuthLayout({
+  title,
+  subtitle,
+  children,
+  footer,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
   return (
-    <div className="min-h-screen" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div className="card card-pad" style={{ width: '100%', maxWidth: 440 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-          <span style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--primary)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-            <BusFront size={18} />
-          </span>
-          <strong style={{ fontSize: 18 }}>vitoo</strong>
+    <div className="auth-shell">
+      <GlassBackdrop />
+      <div className="auth-card glass">
+        <div className="auth-brand">
+          <span className="auth-logo">V</span>
+          <strong>VITOO</strong>
         </div>
         <h2 style={{ fontSize: 22 }}>{title}</h2>
         <p className="muted" style={{ fontSize: 13, margin: '5px 0 20px' }}>{subtitle}</p>
         {children}
-        {footer && <div style={{ marginTop: 18, fontSize: 13, textAlign: 'center' }}>{footer}</div>}
+        {footer && <div className="auth-footer">{footer}</div>}
       </div>
     </div>
   );
@@ -27,6 +106,12 @@ function AuthLayout({ title, subtitle, children, footer }: { title: string; subt
 function ErrorBox({ error }: { error: string }) {
   return error ? <div style={{ marginBottom: 12 }}><Notice tone="error">{error}</Notice></div> : null;
 }
+
+const spaceLinks = (
+  <>
+    <Link to="/passenger">Passager</Link> · <Link to="/company">Compagnie</Link> · <Link to="/admin">Admin</Link>
+  </>
+);
 
 /* --------------------------- Passager / Admin --------------------------- */
 
@@ -51,6 +136,12 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
     reset: ['Nouveau mot de passe', 'Saisissez le code reçu et votre nouveau mot de passe.'],
   } as const;
 
+  const finish = (result: AuthResult) => {
+    setUserSession(makeUserSession(result));
+    toast('Bienvenue !', 'success');
+    navigate(params.get('next') || (result.user.role === 'admin' ? '/admin' : '/passenger'), { replace: true });
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
@@ -65,19 +156,14 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
     setBusy(true);
     try {
       if (mode === 'login') {
-        const res = await auth.login({ phone: phone.trim(), password });
-        setUserSession(res);
-        toast('Bienvenue !', 'success');
-        navigate(params.get('next') || (res.user.role === 'admin' ? '/admin' : '/passenger'), { replace: true });
+        finish(await auth.login({ phone: phone.trim(), password }));
       } else if (mode === 'register') {
-        const res = await auth.register({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim(), password });
-        setUserSession(res);
-        toast('Compte créé avec succès.', 'success');
-        navigate(params.get('next') || '/passenger', { replace: true });
+        finish(await auth.register({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim(), password }));
       } else if (mode === 'forgot') {
         const res = await auth.forgotPassword(phone.trim());
         if (res.code) setDemoCode(res.code);
         toast(res.message || 'Code envoyé.', 'success');
+        setBusy(false);
       } else {
         await auth.resetPassword({ phone: phone.trim(), code: code.trim(), password });
         toast('Mot de passe réinitialisé. Connectez-vous.', 'success');
@@ -85,7 +171,17 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
       }
     } catch (err) {
       setError(errorMessage(err));
-    } finally {
+      setBusy(false);
+    }
+  };
+
+  const signInWithGoogle = async (idToken: string) => {
+    setError('');
+    setBusy(true);
+    try {
+      finish(await auth.google(idToken));
+    } catch (err) {
+      setError(errorMessage(err));
       setBusy(false);
     }
   };
@@ -98,21 +194,15 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
       </>
     ) : mode === 'register' ? (
       <>Déjà inscrit ? <Link to="/passenger/login">Se connecter</Link></>
-    ) : mode === 'forgot' ? (
-      <>Retour <Link to="/passenger/login">à la connexion</Link></>
     ) : (
       <>Retour <Link to="/passenger/login">à la connexion</Link></>
     );
 
   return (
-    <AuthLayout
-      title={titles[mode][0]}
-      subtitle={titles[mode][1]}
-      footer={footer}
-    >
+    <AuthLayout title={titles[mode][0]} subtitle={titles[mode][1]} footer={footer}>
       <ErrorBox error={error} />
       <form onSubmit={(e) => void submit(e)}>
-        {(mode === 'register') && (
+        {mode === 'register' && (
           <div className="field-row">
             <Field label="Prénom" required><input className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></Field>
             <Field label="Nom" required><input className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></Field>
@@ -140,7 +230,9 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
         )}
         {demoCode && (
           <div style={{ marginBottom: 12 }}>
-            <Notice tone="info">Code de démonstration : <strong style={{ fontFamily: 'monospace' }}>{demoCode}</strong></Notice>
+            <Notice tone="info">
+              Code de démonstration (développement) : <strong style={{ fontFamily: 'monospace' }}>{demoCode}</strong>
+            </Notice>
             <div style={{ marginTop: 8, textAlign: 'right', fontSize: 13 }}>
               <Link to={`/passenger/reset?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(demoCode)}`}>Saisir le code →</Link>
             </div>
@@ -151,9 +243,13 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
           {!busy && <ArrowRight size={16} />}
         </button>
       </form>
-      <div style={{ marginTop: 14, fontSize: 12, textAlign: 'center' }} className="muted">
-        <Link to="/company">Espace compagnie</Link> · <Link to="/driver">Espace chauffeur</Link> · <Link to="/admin">Administration</Link>
-      </div>
+      {(mode === 'login' || mode === 'register') && GOOGLE_CLIENT_ID && (
+        <>
+          <div className="auth-divider"><span>ou continuer avec</span></div>
+          <GoogleButton onCredential={(token) => void signInWithGoogle(token)} />
+        </>
+      )}
+      <div className="auth-spaces">{spaceLinks}</div>
     </AuthLayout>
   );
 }
@@ -199,7 +295,6 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
       navigate('/company', { replace: true });
     } catch (err) {
       setError(errorMessage(err));
-    } finally {
       setBusy(false);
     }
   };
@@ -234,51 +329,7 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
           {!busy && <ArrowRight size={16} />}
         </button>
       </form>
-      <div style={{ marginTop: 14, fontSize: 12, textAlign: 'center' }} className="muted">
-        <Link to="/passenger">Espace passager</Link> · <Link to="/driver">Espace chauffeur</Link> · <Link to="/admin">Administration</Link>
-      </div>
-    </AuthLayout>
-  );
-}
-
-/* -------------------------------- Chauffeur -------------------------------- */
-
-export function DriverLogin() {
-  const { setDriverSession, toast } = useApp();
-  const navigate = useNavigate();
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setBusy(true);
-    try {
-      const res = await auth.loginDriver({ phone: phone.trim(), password });
-      setDriverSession(res);
-      toast('Bienvenue chauffeur !', 'success');
-      navigate('/driver', { replace: true });
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <AuthLayout
-      title="Espace chauffeur"
-      subtitle="Connectez-vous pour voir vos missions."
-      footer={<><span className="muted">Compte créé par votre compagnie.</span> <Link to="/passenger">Espace passager</Link></>}
-    >
-      <ErrorBox error={error} />
-      <form onSubmit={(e) => void submit(e)}>
-        <Field label="Téléphone" required><input className="input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required /></Field>
-        <Field label="Mot de passe" required><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></Field>
-        <button className="btn btn-primary btn-block" disabled={busy} type="submit">{busy ? 'Connexion…' : 'Se connecter'}</button>
-      </form>
+      <div className="auth-spaces">{spaceLinks}</div>
     </AuthLayout>
   );
 }
@@ -300,15 +351,15 @@ export function AdminLogin() {
     try {
       const res = await auth.login({ phone: phone.trim(), password });
       if (res.user.role !== 'admin') {
-        setError('Ces identifiants ne sont pas ceux d\'un administrateur.');
+        setError("Ces identifiants ne sont pas ceux d'un administrateur.");
+        setBusy(false);
         return;
       }
-      setUserSession(res);
+      setUserSession(makeUserSession(res));
       toast('Bienvenue administrateur.', 'success');
       navigate('/admin', { replace: true });
     } catch (err) {
       setError(errorMessage(err));
-    } finally {
       setBusy(false);
     }
   };
@@ -317,12 +368,12 @@ export function AdminLogin() {
     <AuthLayout
       title="Administration"
       subtitle="Espace réservé aux administrateurs Vitoo."
-      footer={<><Link to="/passenger">Espace passager</Link> · <Link to="/company">Compagnie</Link> · <Link to="/driver">Chauffeur</Link></>}
+      footer={spaceLinks}
     >
       <ErrorBox error={error} />
       <form onSubmit={(e) => void submit(e)}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, color: 'var(--primary)' }}>
-          <ShieldCheck size={18} /> <LockKeyhole size={16} /> <span style={{ fontSize: 12, fontWeight: 600 }}>Connexion sécurisée</span>
+        <div className="auth-secure">
+          <ShieldCheck size={18} /> <LockKeyhole size={16} /> <span>Connexion sécurisée</span>
         </div>
         <Field label="Téléphone" required><input className="input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required /></Field>
         <Field label="Mot de passe" required><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></Field>

@@ -6,6 +6,7 @@ import type {
   CompanyRef,
   CompanyStats,
   Driver,
+  DriverSpace,
   DriverStats,
   Incident,
   Notification,
@@ -36,7 +37,7 @@ interface RequestOptions {
 
 function spaceFromPath(path: string): Space {
   if (path.startsWith('/company/')) return 'company';
-  if (path.startsWith('/driver/')) return 'driver';
+  // Les routes chauffeur utilisent le token passager (vitoo_session).
   return 'user';
 }
 
@@ -81,21 +82,29 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 /* ------------------------------ Auth ------------------------------ */
 
-export type AuthResult = { user: User; token: string };
-export type DriverAuthResult = { driver: Driver; token: string };
+export type AuthResult = { user: User; token: string; driverSpace?: DriverSpace | null };
+
+export type PassengerLookup = { id: string; firstName: string; lastName: string; phone: string };
 
 export const auth = {
   register: (body: { firstName: string; lastName: string; phone: string; password: string }) =>
     request<AuthResult>('/auth/register', { method: 'POST', body }),
   login: (body: { phone: string; password: string }) =>
     request<AuthResult>('/auth/login', { method: 'POST', body }),
+  google: (idToken: string) =>
+    request<AuthResult>('/auth/google', { method: 'POST', body: { idToken } }),
   forgotPassword: (phone: string) =>
     request<{ message: string; code?: string }>('/auth/forgot-password', { method: 'POST', body: { phone } }),
   resetPassword: (body: { phone: string; code: string; password: string }) =>
     request<{ message: string }>('/auth/reset-password', { method: 'POST', body }),
-  me: (token: string) => request<{ user: User }>('/auth/me', { token }),
-  patchMe: (token: string, body: Partial<Pick<User, 'firstName' | 'lastName' | 'city' | 'email' | 'phone'>>) =>
-    request<{ user: User }>('/auth/me', { method: 'PATCH', token, body }),
+  me: (token: string) => request<AuthResult>('/auth/me', { token }),
+  patchMe: (
+    token: string,
+    body: Partial<Pick<User, 'firstName' | 'lastName' | 'city' | 'email' | 'phone' | 'avatarUrl'>> & {
+      password?: string;
+      currentPassword?: string;
+    },
+  ) => request<AuthResult>('/auth/me', { method: 'PATCH', token, body }),
   registerCompany: (body: {
     companyName: string;
     rccm?: string;
@@ -112,9 +121,6 @@ export const auth = {
   companyMe: (token: string) => request<{ user: User }>('/company/auth/me', { token }),
   patchCompanyMe: (token: string, body: Record<string, unknown>) =>
     request<{ user: User }>('/company/auth/me', { method: 'PATCH', token, body }),
-  loginDriver: (body: { phone: string; password: string }) =>
-    request<DriverAuthResult>('/driver/auth/login', { method: 'POST', body }),
-  driverMe: (token: string) => request<{ driver: Driver }>('/driver/auth/me', { token }),
 };
 
 /* --------------------------- Trajets publics --------------------------- */
@@ -182,10 +188,13 @@ export const companyApi = {
     request<{ success?: boolean }>(`/company/trips/${encodeURIComponent(id)}`, { method: 'DELETE', token }),
 
   drivers: (token: string) => request<{ drivers: Driver[] }>('/company/drivers', { token }),
-  createDriver: (
-    token: string,
-    body: { firstName: string; lastName: string; phone: string; password: string; licenseNumber?: string },
-  ) => request<{ driver: Driver }>('/company/drivers', { method: 'POST', token, body }),
+  findPassenger: (token: string, phone: string) =>
+    request<{ user: PassengerLookup | null }>(
+      `/company/passengers?phone=${encodeURIComponent(phone)}`,
+      { token },
+    ),
+  createDriver: (token: string, body: { phone: string; licenseNumber?: string }) =>
+    request<{ driver: Driver }>('/company/drivers', { method: 'POST', token, body }),
   updateDriver: (token: string, id: string, body: Record<string, unknown>) =>
     request<{ driver: Driver }>(`/company/drivers/${encodeURIComponent(id)}`, { method: 'PATCH', token, body }),
   deleteDriver: (token: string, id: string) =>
@@ -220,6 +229,7 @@ type VehicleType = import('./types').Vehicle;
 /* ----------------------------- Chauffeur ----------------------------- */
 
 export const driverApi = {
+  me: (token: string) => request<{ driver: Driver; companyName?: string }>('/driver/me', { token }),
   trips: (token: string) => request<{ trips: Trip[] }>('/driver/trips', { token }),
   trip: (token: string, id: string) => request<{ trip: Trip }>(`/driver/trips/${encodeURIComponent(id)}`, { token }),
   status: (token: string, status: string) => request<{ driver: Driver }>('/driver/status', { method: 'PATCH', token, body: { status } }),

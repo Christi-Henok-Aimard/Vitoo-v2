@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, CreditCard, LockKeyhole, Wallet } from 'lucide-react';
-import { paymentsApi, tripsApi, errorMessage, parseList } from '../../api';
+import { paymentsApi, tripsApi, errorMessage } from '../../api';
 import { useAsync } from '../../lib/hooks';
 import { companyName, formatDate, formatMoney } from '../../lib/format';
 import { useApp } from '../../lib/context';
+import { isOnlineMethod, normalizeMethods } from '../../paymentMethods';
 import { Empty, ErrorView, Field, Loading, Notice } from '../../lib/ui';
 import type { Trip } from '../../types';
 
@@ -38,8 +39,8 @@ export function BookingPage() {
   if (error) return <ErrorView message={error} retry={() => void reload()} />;
   if (!trip) return <Empty icon={CreditCard} title="Trajet introuvable" action={<Link className="btn btn-primary" to="/passenger">Retour</Link>} />;
 
-  const methods = parseList(trip.paymentMethods);
-  if (!methods.length) methods.push('Espèces');
+  // Le passager ne voit que les moyens activés sur ce trajet.
+  const methods = normalizeMethods(trip.paymentMethods);
 
   const infosSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -50,7 +51,7 @@ export function BookingPage() {
     setBusy(true);
     setMethodError('');
     try {
-      if (method.toLowerCase().includes('esp')) {
+      if (!isOnlineMethod(method)) {
         const res = await tripsApi.book(id, { passengerName: passengerName.trim(), passengerPhone: passengerPhone.trim(), paymentMethod: method }, userSession.token);
         toast('Réservation confirmée ! Votre billet est prêt.', 'success');
         navigate(`/passenger/tickets?ticket=${encodeURIComponent(res.ticket?.code || '')}`);
@@ -108,7 +109,7 @@ export function BookingPage() {
               {methodError && <div style={{ marginBottom: 12 }}><Notice tone="error">{methodError}</Notice></div>}
               <div style={{ display: 'grid', gap: 10 }}>
                 {methods.map((method) => {
-                  const isCash = method.toLowerCase().includes('esp');
+                  const isCash = !isOnlineMethod(method);
                   return (
                     <button
                       key={method}

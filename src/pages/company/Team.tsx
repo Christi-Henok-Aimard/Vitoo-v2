@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
-import { CarFront, Edit2, Plus, Trash2, UserCog } from 'lucide-react';
-import { companyApi, errorMessage } from '../../api';
+import { CarFront, Edit2, Plus, Search, Trash2, UserCog } from 'lucide-react';
+import { companyApi, errorMessage, type PassengerLookup } from '../../api';
 import { useApp } from '../../lib/context';
 import { useAsync, usePolling } from '../../lib/hooks';
 import { ConfirmModal, Empty, ErrorView, Field, Loading, Modal, Notice, PageHeader, StatusBadge } from '../../lib/ui';
@@ -19,19 +19,25 @@ export function CompanyTeamPage() {
   const [form, setForm] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [searchPhone, setSearchPhone] = useState('');
+  const [foundPassenger, setFoundPassenger] = useState<PassengerLookup | null>(null);
+  const [searchError, setSearchError] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [licenseNumber, setLicenseNumber] = useState('');
 
   usePolling(() => { void drivers.reload(); void vehicles.reload(); }, 15000);
 
   const openForm = (t: Target) => {
     setError('');
+    setSearchError('');
+    setSearchPhone('');
+    setFoundPassenger(null);
+    setLicenseNumber('');
     if (t.kind === 'driver') {
       const d = t.item;
       setForm({
-        firstName: d?.user?.firstName || d?.firstName || '',
-        lastName: d?.user?.lastName || d?.lastName || '',
-        phone: d?.user?.phone || d?.phone || '',
         licenseNumber: d?.licenseNumber || '',
-        password: '',
+        status: d?.status || 'available',
       });
     } else {
       const v = t.item;
@@ -49,31 +55,54 @@ export function CompanyTeamPage() {
   const set = (k: string) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((prev) => ({ ...prev, [k]: e.target.value }));
 
+  const searchPassenger = async () => {
+    if (!searchPhone.trim()) return;
+    setSearching(true);
+    setSearchError('');
+    setFoundPassenger(null);
+    try {
+      const res = await companyApi.findPassenger(token, searchPhone.trim());
+      if (res.user) setFoundPassenger(res.user);
+      else setSearchError("Aucun compte passager avec ce numéro. Invitez la personne à s'inscrire d'abord.");
+    } catch (err) {
+      setFoundPassenger(null);
+      setSearchError(errorMessage(err));
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const addDriver = async () => {
+    if (!foundPassenger) return;
+    setBusy(true);
+    setError('');
+    try {
+      await companyApi.createDriver(token, {
+        phone: foundPassenger.phone,
+        licenseNumber: licenseNumber.trim() || undefined,
+      });
+      toast('Chauffeur ajouté à votre équipe.', 'success');
+      setTarget(null);
+      await drivers.reload();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!target) return;
     setBusy(true);
     setError('');
     try {
-      if (target.kind === 'driver') {
-        if (!target.item) {
-          if (form.password.length < 8) throw new Error('Le mot de passe doit contenir au moins 8 caractères.');
-          await companyApi.createDriver(token, {
-            firstName: form.firstName.trim(),
-            lastName: form.lastName.trim(),
-            phone: form.phone.trim(),
-            password: form.password,
-            licenseNumber: form.licenseNumber.trim() || undefined,
-          });
-        } else {
-          await companyApi.updateDriver(token, target.item.id, {
-            firstName: form.firstName.trim(),
-            lastName: form.lastName.trim(),
-            phone: form.phone.trim(),
-            licenseNumber: form.licenseNumber.trim() || undefined,
-          });
-        }
-        toast('Chauffeur enregistré.', 'success');
+      if (target.kind === 'driver' && target.item) {
+        await companyApi.updateDriver(token, target.item.id, {
+          licenseNumber: form.licenseNumber.trim() || undefined,
+          status: form.status,
+        });
+        toast('Chauffeur mis à jour.', 'success');
         await drivers.reload();
       } else {
         const body = {
@@ -122,10 +151,10 @@ export function CompanyTeamPage() {
         <div className="card card-pad">
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
             <strong>Mes chauffeurs</strong>
-            <button className="btn btn-primary btn-sm" onClick={() => openForm({ kind: 'driver' })}><Plus size={14} /> Ajouter</button>
+            <button className="btn btn-primary btn-sm" onClick={() => openForm({ kind: 'driver' })}><Plus size={14} /> Ajouter un chauffeur</button>
           </div>
           {drivers.loading ? <Loading /> : drivers.error ? <ErrorView message={drivers.error} retry={() => void drivers.reload()} /> : drivers.data.drivers.length === 0 ? (
-            <Empty icon={UserCog} title="Aucun chauffeur" text="Ajoutez un chauffeur pour lui confier des missions." />
+            <Empty icon={UserCog} title="Aucun chauffeur" text="Cherchez un passager existant pour le promouvoir chauffeur." />
           ) : (
             <div className="table-wrap">
               <table className="table">
@@ -186,42 +215,97 @@ export function CompanyTeamPage() {
 
       {target && (
         <Modal
-          title={target.kind === 'driver' ? (target.item ? 'Modifier le chauffeur' : 'Nouveau chauffeur') : target.item ? 'Modifier le véhicule' : 'Nouveau véhicule'}
-          subtitle={target.kind === 'driver' && !target.item ? 'Un compte chauffeur sera créé avec ce téléphone et ce mot de passe.' : undefined}
+          title={target.kind === 'driver' ? (target.item ? 'Modifier le chauffeur' : 'Ajouter un chauffeur') : target.item ? 'Modifier le véhicule' : 'Nouveau véhicule'}
+          subtitle={
+            target.kind === 'driver' && !target.item
+              ? 'Recherchez un passager existant par son numéro, puis promouvez-le.'
+              : undefined
+          }
           onClose={() => setTarget(null)}
-          footer={<><button className="btn" onClick={() => setTarget(null)}>Annuler</button><button className="btn btn-primary" type="submit" form="team-form" disabled={busy}>Enregistrer</button></>}
-        >
-          {error && <div style={{ marginBottom: 12 }}><Notice tone="error">{error}</Notice></div>}
-          <form id="team-form" onSubmit={(e) => void submit(e)}>
-            {target.kind === 'driver' ? (
+          footer={
+            target.kind === 'driver' && !target.item ? (
               <>
-                <div className="field-row">
-                  <Field label="Prénom" required><input className="input" value={form.firstName} onChange={set('firstName')} required /></Field>
-                  <Field label="Nom" required><input className="input" value={form.lastName} onChange={set('lastName')} required /></Field>
-                </div>
-                <Field label="Téléphone" required><input className="input" inputMode="tel" value={form.phone} onChange={set('phone')} required disabled={!!target.item} /></Field>
-                <Field label="Numéro de permis"><input className="input" value={form.licenseNumber} onChange={set('licenseNumber')} /></Field>
-                {!target.item && <Field label="Mot de passe" required hint="8 caractères minimum"><input className="input" type="password" minLength={8} value={form.password} onChange={set('password')} required /></Field>}
+                <button className="btn" onClick={() => setTarget(null)}>Annuler</button>
+                <button className="btn btn-primary" disabled={!foundPassenger || busy} onClick={() => void addDriver()}>
+                  {busy ? 'Ajout…' : 'Ajouter comme chauffeur'}
+                </button>
               </>
             ) : (
               <>
-                <Field label="Plaque d'immatriculation" required><input className="input" value={form.plateNumber} onChange={set('plateNumber')} required /></Field>
-                <div className="field-row">
-                  <Field label="Marque"><input className="input" value={form.brand} onChange={set('brand')} /></Field>
-                  <Field label="Modèle"><input className="input" value={form.model} onChange={set('model')} /></Field>
-                  <Field label="Capacité"><input className="input" type="number" min={1} value={form.capacity} onChange={set('capacity')} /></Field>
-                </div>
-                <Field label="Photo (URL)"><input className="input" value={form.photo} onChange={set('photo')} placeholder="https://…" /></Field>
+                <button className="btn" onClick={() => setTarget(null)}>Annuler</button>
+                <button className="btn btn-primary" type="submit" form="team-form" disabled={busy}>Enregistrer</button>
               </>
-            )}
-          </form>
+            )
+          }
+        >
+          {error && <div style={{ marginBottom: 12 }}><Notice tone="error">{error}</Notice></div>}
+          {target.kind === 'driver' && !target.item ? (
+            <div>
+              <Field label="Numéro de téléphone du passager" required>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    className="input"
+                    inputMode="tel"
+                    placeholder="+225 07 00 00 00 00"
+                    value={searchPhone}
+                    onChange={(e) => { setSearchPhone(e.target.value); setSearchError(''); setFoundPassenger(null); }}
+                  />
+                  <button className="btn btn-secondary" disabled={searching || !searchPhone.trim()} onClick={() => void searchPassenger()}>
+                    {searching ? 'Recherche…' : <><Search size={15} /> Rechercher</>}
+                  </button>
+                </div>
+              </Field>
+              {searchError && <div style={{ marginBottom: 12 }}><Notice tone="error">{searchError}</Notice></div>}
+              {foundPassenger && (
+                <div className="found-passenger">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span className="stat-icon" style={{ background: 'var(--success-soft)', color: 'var(--success)' }}><UserCog size={19} /></span>
+                    <div>
+                      <strong>{foundPassenger.firstName} {foundPassenger.lastName}</strong>
+                      <div className="muted" style={{ fontSize: 12 }}>{foundPassenger.phone}</div>
+                    </div>
+                  </div>
+                  <div style={{ height: 12 }} />
+                  <Field label="Numéro de permis (facultatif)">
+                    <input className="input" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="Ex. 12345-AB" />
+                  </Field>
+                  <Notice tone="info">Ce passager garde son compte ; il pourra accéder à son espace chauffeur depuis son profil.</Notice>
+                </div>
+              )}
+            </div>
+          ) : (
+            <form id="team-form" onSubmit={(e) => void submit(e)}>
+              {target.kind === 'driver' ? (
+                <>
+                  <Field label="Numéro de permis"><input className="input" value={form.licenseNumber} onChange={set('licenseNumber')} /></Field>
+                  <Field label="Statut">
+                    <select className="select" value={form.status} onChange={set('status')}>
+                      <option value="available">Disponible</option>
+                      <option value="on_trip">En mission</option>
+                      <option value="off_duty">En repos</option>
+                    </select>
+                  </Field>
+                </>
+              ) : (
+                <>
+                  <Field label="Plaque d'immatriculation" required><input className="input" value={form.plateNumber} onChange={set('plateNumber')} required /></Field>
+                  <div className="field-row">
+                    <Field label="Marque"><input className="input" value={form.brand} onChange={set('brand')} /></Field>
+                    <Field label="Modèle"><input className="input" value={form.model} onChange={set('model')} /></Field>
+                    <Field label="Capacité"><input className="input" type="number" min={1} value={form.capacity} onChange={set('capacity')} /></Field>
+                  </div>
+                  <Field label="Photo (URL)"><input className="input" value={form.photo} onChange={set('photo')} placeholder="https://…" /></Field>
+                </>
+              )}
+            </form>
+          )}
         </Modal>
       )}
 
       {deleting && (
         <ConfirmModal
           title="Confirmer la suppression"
-          message={deleting.kind === 'driver' ? 'Le compte du chauffeur sera supprimé.' : 'Le véhicule sera supprimé de votre flotte.'}
+          message={deleting.kind === 'driver' ? 'Le chauffeur sera retiré de votre équipe.' : 'Le véhicule sera supprimé de votre flotte.'}
           confirmLabel="Supprimer"
           danger
           onClose={() => setDeleting(null)}

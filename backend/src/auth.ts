@@ -5,7 +5,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import type { Driver, Role, User } from '@prisma/client';
+import type { Driver, DriverStatus, Role, User } from '@prisma/client';
 import { prisma } from './db.js';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -21,6 +21,44 @@ export class HttpError extends Error {
     super(message);
   }
 }
+
+// --- Téléphones ----------------------------------------------------------
+
+/**
+ * Normalise un numéro ivoirien : 07…, +22507…, 0022507…, espaces et tirets
+ * → +2250XXXXXXXX. Renvoie '' si le numéro est invalide.
+ */
+export const normalizePhone = (value: unknown): string => {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  let digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('00225')) digits = digits.slice(5);
+  else if (digits.startsWith('225')) digits = digits.slice(3);
+  return /^0\d{9}$/.test(digits) ? `+225${digits}` : '';
+};
+
+/**
+ * Cherche un utilisateur par téléphone, en acceptant aussi les anciens formats
+ * éventuellement stockés en base (07…, 225…, +225…) : pas de casse pour les
+ * comptes déjà créés avant la normalisation.
+ */
+export const findUserByPhone = async (phone: string): Promise<User | null> => {
+  const candidates = new Set<string>();
+  const normalized = normalizePhone(phone);
+  if (normalized) candidates.add(normalized);
+  const raw = phone.trim();
+  if (raw) candidates.add(raw);
+  const digits = raw.replace(/\D/g, '');
+  if (digits) {
+    candidates.add(digits);
+    if (digits.startsWith('225')) candidates.add(`+${digits}`);
+    if (digits.startsWith('00225')) candidates.add(`+${digits.slice(5)}`);
+  }
+  for (const candidate of candidates) {
+    const user = await prisma.user.findUnique({ where: { phone: candidate } });
+    if (user) return user;
+  }
+  return null;
+};
 
 /** À appeler au boot : échoue immédiatement si le secret manque en production. */
 export const assertProductionSecrets = (): void => {
@@ -98,17 +136,21 @@ export const requireAuth = async (
     return;
   }
   request.user = user;
+  request.authUser = user;
   next();
 };
 
-/** Optionnel : renseigne request.user si un token valide est présent. */
+/** Optionnel : renseigne request.user / request.authUser si un token est valide. */
 export const optionalAuth = async (
   request: Request,
   _response: Response,
   next: NextFunction,
 ): Promise<void> => {
   const user = await loadUser(request);
-  if (user) request.user = user;
+  if (user) {
+    request.user = user;
+    request.authUser = user;
+  }
   next();
 };
 
@@ -135,6 +177,38 @@ export const publicUser = (user: User) => {
   return safe;
 };
 
+/** Espace chauffeur exposé dans la session d'un passager promu. */
+export interface DriverSpace {
+  id: string;
+  companyId: string;
+  companyName: string;
+  licenseNumber: string | null;
+  status: DriverStatus;
+}
+
+/**
+ * Retourne l'espace chauffeur lié à un compte passager, ou null si la personne
+ * n'a pas été promue. Le rôle du User reste 'passenger'.
+ */
+export const driverSpaceFor = async (userId: string): Promise<DriverSpace | null> => {
+  const driver = await prisma.driver.findUnique({
+    where: { userId },
+    include: { user: true },
+  });
+  if (!driver) return null;
+  const company = await prisma.user.findUnique({
+    where: { id: driver.companyId },
+    select: { companyName: true },
+  });
+  return {
+    id: driver.id,
+    companyId: driver.companyId,
+    companyName: company?.companyName ?? '',
+    licenseNumber: driver.licenseNumber,
+    status: driver.status,
+  };
+};
+
 export const driverView = async (driver: Driver) => {
   const user = await prisma.user.findUnique({ where: { id: driver.userId } });
   return {
@@ -156,7 +230,8 @@ export const findOrCreatePassenger = async (input: {
   name: string;
   email?: string | null;
 }): Promise<User> => {
-  const existing = await prisma.user.findUnique({ where: { phone: input.phone } });
+  const phone = normalizePhone(input.phone) || input.phone.trim();
+  const existing = await findUserByPhone(phone);
   if (existing) return existing;
   const parts = input.name.trim().split(/\s+/).filter(Boolean);
   const firstName = parts.shift() || 'Passager';
@@ -166,7 +241,7 @@ export const findOrCreatePassenger = async (input: {
       data: {
         firstName,
         lastName,
-        phone: input.phone,
+        phone,
         email: input.email || null,
         role: 'passenger',
       },
@@ -174,7 +249,7 @@ export const findOrCreatePassenger = async (input: {
   } catch {
     // Adresse e-mail déjà utilisée : on crée sans e-mail.
     return prisma.user.create({
-      data: { firstName, lastName, phone: input.phone, role: 'passenger' },
+      data: { firstName, lastName, phone, role: 'passenger' },
     });
   }
 };

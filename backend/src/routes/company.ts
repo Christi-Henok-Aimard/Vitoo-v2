@@ -1,16 +1,19 @@
 /** Espace compagnie : trajets, chauffeurs, véhicules, billets, statistiques. */
 import { Router } from 'express';
-import { Prisma, Role, TripStatus, DriverStatus } from '@prisma/client';
+import { Prisma, TripStatus, DriverStatus } from '@prisma/client';
 import { prisma, isUniqueError } from '../db.js';
 import {
   driverView,
   findOrCreatePassenger,
+  findUserByPhone,
   hashPassword,
+  normalizePhone,
   requireAuth,
   requireRole,
   validatePassword,
   HttpError,
 } from '../auth.js';
+import { normalizeMethods } from '../paymentMethods.js';
 import { formatTrip, parseStringArray, createBookingAndTicket } from './trips.js';
 
 export const companyRouter = Router();
@@ -57,7 +60,9 @@ const tripPayload = async (
     data.date = date;
   }
   if (body.stops !== undefined) data.stops = jsonArray(body.stops, []);
-  if (body.paymentMethods !== undefined) data.paymentMethods = jsonArray(body.paymentMethods, ['Espèces']);
+  if (body.paymentMethods !== undefined) {
+    data.paymentMethods = JSON.stringify(normalizeMethods(body.paymentMethods));
+  }
   if (body.status !== undefined) {
     if (!Object.values(TripStatus).includes(body.status as TripStatus)) {
       throw new HttpError(400, 'Statut de trajet invalide.');
@@ -168,6 +173,27 @@ companyRouter.delete('/trips/:id', async (request, response) => {
 
 // --- Chauffeurs ----------------------------------------------------------
 
+/**
+ * Cherche un passager promoteur potentiel : compte passager sans profil Driver.
+ * Le numéro est normalisé avant recherche.
+ */
+companyRouter.get('/passengers', async (request, response) => {
+  const phone = normalizePhone(str(request.query.phone));
+  if (!phone) return response.json({ user: null });
+  const user = await findUserByPhone(phone);
+  if (!user || user.role !== 'passenger') return response.json({ user: null });
+  const driver = await prisma.driver.findUnique({ where: { userId: user.id } });
+  if (driver) return response.json({ user: null });
+  return response.json({
+    user: {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+    },
+  });
+});
+
 companyRouter.get('/drivers', async (request, response) => {
   const drivers = await prisma.driver.findMany({
     where: { companyId: companyIdOf(request) },
@@ -176,31 +202,26 @@ companyRouter.get('/drivers', async (request, response) => {
   return response.json({ drivers: await Promise.all(drivers.map(driverView)) });
 });
 
+/**
+ * Promote un passager existant en chauffeur : aucun compte n'est créé ici,
+ * le rôle du User reste 'passenger' et seul un profil Driver est ajouté.
+ */
 companyRouter.post('/drivers', async (request, response) => {
   const body = request.body ?? {};
-  const phone = str(body.phone);
-  if (!str(body.firstName) || !str(body.lastName) || !phone || typeof body.password !== 'string') {
-    return response.status(400).json({ message: 'firstName, lastName, phone et password sont requis.' });
+  const phone = normalizePhone(body.phone);
+  if (!phone) {
+    return response.status(400).json({ message: 'Numéro ivoirien valide requis.' });
   }
-  try {
-    validatePassword(body.password);
-  } catch (error) {
-    return response.status(400).json({ message: error instanceof HttpError ? error.message : 'Mot de passe invalide.' });
+  const user = await findUserByPhone(phone);
+  if (!user || user.role !== 'passenger') {
+    return response.status(404).json({
+      message: 'Aucun compte passager ne correspond à ce numéro. Invitez cette personne à créer un compte.',
+    });
   }
-  if (await prisma.user.findUnique({ where: { phone } })) {
-    return response.status(409).json({ message: 'Ce numéro est déjà utilisé.' });
+  const existingDriver = await prisma.driver.findUnique({ where: { userId: user.id } });
+  if (existingDriver) {
+    return response.status(409).json({ message: 'Ce passager est déjà chauffeur.' });
   }
-  const user = await prisma.user.create({
-    data: {
-      firstName: str(body.firstName),
-      lastName: str(body.lastName),
-      phone,
-      email: str(body.email) || null,
-      passwordHash: hashPassword(body.password),
-      role: Role.driver,
-      city: str(body.city) || null,
-    },
-  });
   const driver = await prisma.driver.create({
     data: {
       userId: user.id,
@@ -263,8 +284,8 @@ companyRouter.delete('/drivers/:id', async (request, response) => {
     where: { id: request.params.id, companyId: companyIdOf(request) },
   });
   if (!driver) return response.status(404).json({ message: 'Chauffeur introuvable.' });
+  // On retire uniquement le profil chauffeur : le compte passager reste actif.
   await prisma.driver.delete({ where: { id: driver.id } });
-  await prisma.user.delete({ where: { id: driver.userId } });
   return response.json({ message: 'Chauffeur supprimé.' });
 });
 

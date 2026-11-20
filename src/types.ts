@@ -2,6 +2,15 @@
 
 export type Role = 'passenger' | 'company' | 'driver' | 'admin';
 export type DriverStatus = 'available' | 'on_trip' | 'off_duty';
+
+/** Espace chauffeur exposé dans la session d'un passager promu. */
+export interface DriverSpace {
+  id: string;
+  companyId: string;
+  companyName: string;
+  licenseNumber?: string | null;
+  status: DriverStatus;
+}
 export type TripStatus = 'scheduled' | 'boarding' | 'in_transit' | 'completed' | 'cancelled';
 export type BookingStatus = 'confirmed' | 'cancelled';
 export type PaymentStatus = 'pending' | 'paid' | 'failed';
@@ -21,7 +30,9 @@ export interface User {
   companyLogo?: string | null;
   primaryColor?: string | null;
   secondaryColor?: string | null;
-  paymentMethods?: string | null;
+  paymentMethods?: string | string[] | null;
+  /** Présent lorsque le passager a été promu chauffeur par une compagnie. */
+  driverSpace?: DriverSpace | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -73,7 +84,7 @@ export interface Trip {
   duration?: string | null;
   price: number;
   availableSeats: number;
-  paymentMethods?: string | null;
+  paymentMethods?: string | string[] | null;
   stops?: string | null;
   status: TripStatus;
   company?: string | CompanyRef | null;

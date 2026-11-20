@@ -3,7 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { HttpError } from './auth.js';
-import { passengerAuthRouter, companyAuthRouter, driverAuthRouter } from './routes/auth.js';
+import { passengerAuthRouter, companyAuthRouter } from './routes/auth.js';
 import { tripsRouter } from './routes/trips.js';
 import { paymentsRouter } from './routes/payments.js';
 import { companyRouter } from './routes/company.js';
@@ -49,7 +49,6 @@ app.get('/api/health', (_request, response) =>
 // Les routes d'auth sont montées avant les espaces correspondants.
 app.use('/api/auth', passengerAuthRouter);
 app.use('/api/company/auth', companyAuthRouter);
-app.use('/api/driver/auth', driverAuthRouter);
 app.use('/api/trips', tripsRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/company', companyRouter);
