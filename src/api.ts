@@ -10,6 +10,7 @@ import type {
   DriverStats,
   Incident,
   Notification,
+  PassengerLookup,
   Payment,
   Rating,
   Ticket,
@@ -84,7 +85,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 export type AuthResult = { user: User; token: string; driverSpace?: DriverSpace | null };
 
-export type PassengerLookup = { id: string; firstName: string; lastName: string; phone: string };
+export type { PassengerLookup } from './types';
 
 export const auth = {
   register: (body: { firstName: string; lastName: string; phone: string; password: string }) =>

@@ -1,9 +1,7 @@
-import { useCallback, useState } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { BarChart3, BusFront, CarFront, ClipboardList, Home, LayoutDashboard, QrCode, ScanLine, Ticket, UserCog, Users } from 'lucide-react';
 import { Guard } from './components/Guard';
 import { AppShell, type NavItem } from './components/AppShell';
-import { Splash } from './components/Splash';
 import { useApp } from './lib/context';
 import { Loading } from './lib/ui';
 import { AdminLogin, CompanyAuth, PassengerAuth } from './pages/Auth';
@@ -107,12 +105,8 @@ function AdminEntry() {
 }
 
 export default function App() {
-  const [splash, setSplash] = useState(true);
-  const closeSplash = useCallback(() => setSplash(false), []);
-
   return (
     <>
-      {splash && <Splash onDone={closeSplash} />}
       <Routes>
         <Route path="/" element={<Navigate to="/passenger" replace />} />
 

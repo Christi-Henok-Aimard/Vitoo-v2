@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type Rea
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { auth, errorMessage, type AuthResult } from '../api';
-import { GlassBackdrop } from '../components/Splash';
 import { useApp } from '../lib/context';
 import { makeUserSession } from '../session';
 import { Field, Notice } from '../lib/ui';
@@ -88,8 +87,7 @@ function AuthLayout({
 }) {
   return (
     <div className="auth-shell">
-      <GlassBackdrop />
-      <div className="auth-card glass">
+      <div className="auth-card">
         <div className="auth-brand">
           <span className="auth-logo">V</span>
           <strong>VITOO</strong>
@@ -125,7 +123,7 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [code, setCode] = useState(params.get('code') || '');
-  const [demoCode, setDemoCode] = useState('');
+  const [resetCode, setResetCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -161,7 +159,7 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
         finish(await auth.register({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim(), password }));
       } else if (mode === 'forgot') {
         const res = await auth.forgotPassword(phone.trim());
-        if (res.code) setDemoCode(res.code);
+        if (res.code) setResetCode(res.code);
         toast(res.message || 'Code envoyé.', 'success');
         setBusy(false);
       } else {
@@ -228,13 +226,13 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
             <input className="input" type="password" minLength={8} value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
           </Field>
         )}
-        {demoCode && (
+        {resetCode && (
           <div style={{ marginBottom: 12 }}>
             <Notice tone="info">
-              Code de démonstration (développement) : <strong style={{ fontFamily: 'monospace' }}>{demoCode}</strong>
+              Votre code de réinitialisation : <strong style={{ fontFamily: 'monospace' }}>{resetCode}</strong>
             </Notice>
             <div style={{ marginTop: 8, textAlign: 'right', fontSize: 13 }}>
-              <Link to={`/passenger/reset?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(demoCode)}`}>Saisir le code →</Link>
+              <Link to={`/passenger/reset?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(resetCode)}`}>Saisir le code →</Link>
             </div>
           </div>
         )}

@@ -1,7 +1,8 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react';
-import { CarFront, Edit2, Plus, Search, Trash2, UserCog } from 'lucide-react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { CarFront, Edit2, Plus, Trash2, UserCog } from 'lucide-react';
 import { companyApi, errorMessage, type PassengerLookup } from '../../api';
 import { useApp } from '../../lib/context';
+import { initials } from '../../lib/format';
 import { useAsync, usePolling } from '../../lib/hooks';
 import { ConfirmModal, Empty, ErrorView, Field, Loading, Modal, Notice, PageHeader, StatusBadge } from '../../lib/ui';
 import type { Driver, Vehicle } from '../../types';
@@ -55,22 +56,46 @@ export function CompanyTeamPage() {
   const set = (k: string) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((prev) => ({ ...prev, [k]: e.target.value }));
 
-  const searchPassenger = async () => {
-    if (!searchPhone.trim()) return;
+  // Recherche instantanée : dès 6 chiffres saisis, la recherche se déclenche
+  // automatiquement après une courte pause de frappe (debounce ~300 ms).
+  useEffect(() => {
+    const digits = searchPhone.replace(/\D/g, '');
+    if (digits.length < 6) {
+      setFoundPassenger(null);
+      setSearchError('');
+      setSearching(false);
+      return;
+    }
+
+    let cancelled = false;
     setSearching(true);
     setSearchError('');
-    setFoundPassenger(null);
-    try {
-      const res = await companyApi.findPassenger(token, searchPhone.trim());
-      if (res.user) setFoundPassenger(res.user);
-      else setSearchError("Aucun compte passager avec ce numéro. Invitez la personne à s'inscrire d'abord.");
-    } catch (err) {
-      setFoundPassenger(null);
-      setSearchError(errorMessage(err));
-    } finally {
-      setSearching(false);
-    }
-  };
+    const timer = window.setTimeout(() => {
+      void companyApi
+        .findPassenger(token, searchPhone.trim())
+        .then((res) => {
+          if (cancelled) return;
+          if (res.user) setFoundPassenger(res.user);
+          else {
+            setFoundPassenger(null);
+            setSearchError("Aucun compte passager avec ce numéro. Invitez la personne à s'inscrire d'abord.");
+          }
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setFoundPassenger(null);
+          setSearchError(errorMessage(err));
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false);
+        });
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [searchPhone, token]);
 
   const addDriver = async () => {
     if (!foundPassenger) return;
@@ -218,7 +243,7 @@ export function CompanyTeamPage() {
           title={target.kind === 'driver' ? (target.item ? 'Modifier le chauffeur' : 'Ajouter un chauffeur') : target.item ? 'Modifier le véhicule' : 'Nouveau véhicule'}
           subtitle={
             target.kind === 'driver' && !target.item
-              ? 'Recherchez un passager existant par son numéro, puis promouvez-le.'
+              ? "Saisissez le numéro d'un passager existant pour le promouvoir chauffeur."
               : undefined
           }
           onClose={() => setTarget(null)}
@@ -241,25 +266,25 @@ export function CompanyTeamPage() {
           {error && <div style={{ marginBottom: 12 }}><Notice tone="error">{error}</Notice></div>}
           {target.kind === 'driver' && !target.item ? (
             <div>
-              <Field label="Numéro de téléphone du passager" required>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    className="input"
-                    inputMode="tel"
-                    placeholder="+225 07 00 00 00 00"
-                    value={searchPhone}
-                    onChange={(e) => { setSearchPhone(e.target.value); setSearchError(''); setFoundPassenger(null); }}
-                  />
-                  <button className="btn btn-secondary" disabled={searching || !searchPhone.trim()} onClick={() => void searchPassenger()}>
-                    {searching ? 'Recherche…' : <><Search size={15} /> Rechercher</>}
-                  </button>
-                </div>
+              <Field label="Numéro de téléphone du passager" required hint="La recherche démarre automatiquement après 6 chiffres.">
+                <input
+                  className="input"
+                  inputMode="tel"
+                  placeholder="+225 07 00 00 00 00"
+                  value={searchPhone}
+                  onChange={(e) => { setSearchPhone(e.target.value); setSearchError(''); setFoundPassenger(null); }}
+                />
               </Field>
-              {searchError && <div style={{ marginBottom: 12 }}><Notice tone="error">{searchError}</Notice></div>}
+              {searching && <p className="muted" style={{ margin: '0 0 12px', fontSize: 13 }}>Recherche…</p>}
+              {!searching && searchError && <div style={{ marginBottom: 12 }}><Notice tone="error">{searchError}</Notice></div>}
               {foundPassenger && (
                 <div className="found-passenger">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span className="stat-icon" style={{ background: 'var(--success-soft)', color: 'var(--success)' }}><UserCog size={19} /></span>
+                  <div className="passenger-profile">
+                    {foundPassenger.avatarUrl ? (
+                      <img src={foundPassenger.avatarUrl} alt="" className="avatar passenger-avatar" />
+                    ) : (
+                      <span className="avatar passenger-avatar">{initials(foundPassenger.firstName, foundPassenger.lastName)}</span>
+                    )}
                     <div>
                       <strong>{foundPassenger.firstName} {foundPassenger.lastName}</strong>
                       <div className="muted" style={{ fontSize: 12 }}>{foundPassenger.phone}</div>
@@ -267,7 +292,7 @@ export function CompanyTeamPage() {
                   </div>
                   <div style={{ height: 12 }} />
                   <Field label="Numéro de permis (facultatif)">
-                    <input className="input" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="Ex. 12345-AB" />
+                    <input className="input" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="12345-AB" />
                   </Field>
                   <Notice tone="info">Ce passager garde son compte ; il pourra accéder à son espace chauffeur depuis son profil.</Notice>
                 </div>

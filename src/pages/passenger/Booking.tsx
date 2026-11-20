@@ -90,13 +90,13 @@ export function BookingPage() {
           {step === 1 ? (
             <form onSubmit={infosSubmit}>
               <Field label="Nom et prénom du passager" required>
-                <input className="input" value={passengerName} onChange={(e) => setPassengerName(e.target.value)} required placeholder="Ex. Konan Kouassi" />
+                <input className="input" value={passengerName} onChange={(e) => setPassengerName(e.target.value)} required placeholder="Nom et prénom" />
               </Field>
               <Field label="Téléphone" required>
                 <input className="input" inputMode="tel" value={passengerPhone} onChange={(e) => setPassengerPhone(e.target.value)} required placeholder="+225 07 00 00 00 00" />
               </Field>
               <Field label="E-mail (utile pour le paiement en ligne)">
-                <input className="input" type="email" value={passengerEmail} onChange={(e) => setPassengerEmail(e.target.value)} placeholder="vous@exemple.com" />
+                <input className="input" type="email" value={passengerEmail} onChange={(e) => setPassengerEmail(e.target.value)} placeholder="votre@email.com" />
               </Field>
               <div className="divider" />
               <button className="btn btn-primary btn-block" type="submit">Continuer vers le paiement</button>

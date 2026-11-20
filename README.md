@@ -22,7 +22,6 @@ cp .env.example .env
 npm install
 npx prisma generate
 npm run prisma:push
-npm run seed
 npm run dev          # http://localhost:4000/api/health
 
 # 2. Frontend (dans un autre terminal)
@@ -36,10 +35,10 @@ npm run dev          # http://localhost:5173
 
 - **Passager** : `/passenger/register` (téléphone + mot de passe) ou connexion Google si `VITE_GOOGLE_CLIENT_ID` est renseigné.
 - **Compagnie** : `/company/register` (nom, RCCM, identifiant fiscal, ville, responsable, e-mail, mot de passe).
-- **Chauffeur** : il possède **d'abord un compte passager**. Dans l'espace compagnie → « Équipe & flotte », cherchez son numéro de téléphone, puis cliquez sur « Ajouter comme chauffeur ». S'il n'a pas encore de compte, invitez-le à s'inscrire comme passager. Ensuite, depuis son profil passager, il clique sur « Accéder à mon espace chauffeur ».
-- **Admin** : compte créé automatiquement au démarrage du backend si `ADMIN_BOOTSTRAP_PHONE` et `ADMIN_BOOTSTRAP_PASSWORD` sont définis.
+- **Chauffeur** : il possède **d'abord un compte passager**. Dans l'espace compagnie → « Équipe & flotte », tapez son numéro : la fiche (photo, prénom, nom, téléphone) apparaît instantanément ; cliquez alors sur « Ajouter comme chauffeur ». S'il n'a pas encore de compte, invitez-le à s'inscrire comme passager. Ensuite, depuis son profil passager, il clique sur « Accéder à mon espace chauffeur ».
+- **Admin** : compte créé automatiquement au démarrage du backend **uniquement si** `ADMIN_BOOTSTRAP_PHONE` et `ADMIN_BOOTSTRAP_PASSWORD` sont définis avec vos propres valeurs. Sans ces variables, aucun admin n'existe.
 
-> Le seed (`npm run seed`) est **réservé au test local** : il ne crée aucun passager ni chauffeur. Ne l'exécutez pas en production.
+> **Aucun compte ni aucune donnée de démonstration ne sont fournis.** Au premier lancement, les quatre espaces sont vides : les compagnies, passagers et trajets sont créés réellement via les formulaires.
 
 ### Moyens de paiement
 

@@ -117,7 +117,7 @@ export function SearchPage() {
                 <input className="input" list="vitoo-companies" placeholder="Toutes" value={company} onChange={(e) => setCompany(e.target.value)} />
               </Field>
               <Field label="Prix maximum (FCFA)">
-                <input className="input" inputMode="numeric" placeholder="ex. 5000" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
+                <input className="input" inputMode="numeric" placeholder="5000" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
               </Field>
               <Field label="Trier par">
                 <select className="select" value={sort} onChange={(e) => setSort(e.target.value as 'date' | 'price')}>

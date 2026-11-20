@@ -116,7 +116,7 @@ export function DriverScanPage() {
               <div className="divider" />
               <form onSubmit={submit}>
                 <label className="label">Code du billet</label>
-                <input className="input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ex. VIT-XXXXXX" autoFocus />
+                <input className="input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="VIT-XXXXXX" autoFocus />
                 <div style={{ marginTop: 12 }}>
                   <button className="btn btn-primary btn-block" type="submit" disabled={busy || !code.trim()}>
                     {busy ? <Spinner label="Vérification…" /> : <><ScanLine size={16} /> Valider le billet</>}

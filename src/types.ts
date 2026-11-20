@@ -37,6 +37,15 @@ export interface User {
   updatedAt?: string;
 }
 
+/** Résultat d'une recherche de passager par numéro de téléphone. */
+export interface PassengerLookup {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  avatarUrl?: string | null;
+}
+
 export interface Driver {
   id: string;
   userId: string;

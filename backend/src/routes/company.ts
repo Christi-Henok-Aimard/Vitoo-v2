@@ -190,6 +190,7 @@ companyRouter.get('/passengers', async (request, response) => {
       firstName: user.firstName,
       lastName: user.lastName,
       phone: user.phone,
+      avatarUrl: user.avatarUrl,
     },
   });
 });
