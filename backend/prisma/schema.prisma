@@ -1,0 +1,206 @@
+// Contrat VITOO v2 — source de vérité unique (voir CONTRAT_API.md §2)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  firstName     String
+  lastName      String
+  phone         String   @unique
+  email         String?  @unique
+  passwordHash  String?
+  role          Role     @default(passenger)
+  city          String?
+  avatarUrl     String?
+  companyName   String?
+  rccm          String?
+  taxId         String?
+  companyLogo   String?
+  primaryColor  String?
+  secondaryColor String?
+  paymentMethods String  @default("[\"Espèces\"]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  bookings      Booking[]
+  notifications Notification[]
+  ratings       Rating[]
+  driver        Driver?
+}
+
+model Driver {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  companyId     String
+  licenseNumber String?
+  status        DriverStatus @default(available)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trips         Trip[]
+  incidents     Incident[]
+}
+
+model Vehicle {
+  id         String  @id @default(cuid())
+  companyId  String
+  plateNumber String
+  brand      String?
+  model      String?
+  capacity   Int?
+  photo      String?
+  isActive   Boolean @default(true)
+  trips      Trip[]
+}
+
+model Trip {
+  id             String   @id @default(cuid())
+  companyId      String
+  driverId       String?
+  vehicleId      String?
+  depart         String
+  arrivee        String
+  station        String?
+  date           DateTime
+  time           String
+  duration       String?
+  price          Int
+  availableSeats Int
+  paymentMethods String   @default("[\"Espèces\"]")
+  stops          String   @default("[]")
+  status         TripStatus @default(scheduled)
+  // Relations d'opposé requises par Prisma (champs ajoutés, aucun contractuel retiré)
+  driver         Driver?   @relation(fields: [driverId], references: [id])
+  vehicle        Vehicle?  @relation(fields: [vehicleId], references: [id])
+  bookings       Booking[]
+  tickets        Ticket[]
+  ratings        Rating[]
+  incidents      Incident[]
+  notifications  Notification[]
+}
+
+model Booking {
+  id             String   @id @default(cuid())
+  userId         String
+  tripId         String
+  passengerName  String
+  passengerPhone String
+  seats          Int     @default(1)
+  seatNumber     String?
+  amount         Int
+  paymentMethod  String
+  status         BookingStatus @default(confirmed)
+  ticket         Ticket?
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip           Trip    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  @@unique([userId, tripId])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  tripId        String
+  bookingId     String?  @unique
+  amount        Int
+  transactionId String   @unique
+  status        PaymentStatus @default(pending)
+  channel       String?
+  paymentUrl    String?
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Ticket {
+  id              String   @id @default(cuid())
+  bookingId       String?  @unique
+  tripId          String
+  companyId       String
+  code            String   @unique
+  qrData          String?
+  seatNumber      String?
+  passengerName   String?
+  passengerPhone  String?
+  paymentMethod   String?
+  amount          Int?
+  soldBy          String   @default("online") // online | counter
+  status          String   @default("active")  // active | used | cancelled
+  validatedBy     String?
+  validatedAt     DateTime?
+  createdAt       DateTime @default(now())
+  booking         Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  trip            Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  tripId     String?
+  type       String   // reminder_48h | reminder_24h | reminder_6h | reminder_2h | reminder_10m | scanned | departed | stop | arrived
+  title      String
+  body       String
+  dedupeKey  String   @unique
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip       Trip?    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model Rating {
+  id           String  @id @default(cuid())
+  userId       String
+  tripId       String
+  driverStars  Int
+  companyStars Int
+  comment      String?
+  createdAt    DateTime @default(now())
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip         Trip    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  @@unique([userId, tripId])
+}
+
+model Incident {
+  id          String   @id @default(cuid())
+  tripId      String
+  driverId    String
+  type        String
+  description String?
+  resolved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  driver      Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  passenger
+  company
+  driver
+  admin
+}
+
+enum DriverStatus {
+  available
+  on_trip
+  off_duty
+}
+
+enum TripStatus {
+  scheduled
+  boarding
+  in_transit
+  completed
+  cancelled
+}
+
+enum BookingStatus {
+  confirmed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+}
