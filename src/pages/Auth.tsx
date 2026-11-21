@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { AuthSplit } from '../components/AuthSplit';
 import { auth, errorMessage, type AuthResult } from '../api';
 import { useApp } from '../lib/context';
 import { makeUserSession } from '../session';
@@ -114,7 +115,7 @@ const spaceLinks = (
 /* --------------------------- Passager / Admin --------------------------- */
 
 export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' | 'reset' }) {
-  const { setUserSession, toast } = useApp();
+  const { setUserSession, toast, theme } = useApp();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [firstName, setFirstName] = useState('');
@@ -134,30 +135,31 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
     reset: ['Nouveau mot de passe', 'Saisissez le code reçu et votre nouveau mot de passe.'],
   } as const;
 
+  type Target = 'login' | 'register' | 'forgot' | 'reset';
+
   const finish = (result: AuthResult) => {
     setUserSession(makeUserSession(result));
     toast('Bienvenue !', 'success');
     navigate(params.get('next') || (result.user.role === 'admin' ? '/admin' : '/passenger'), { replace: true });
   };
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const run = async (target: Target) => {
     setError('');
-    if (mode !== 'forgot' && password.length < 8) {
+    if (target !== 'forgot' && password.length < 8) {
       setError('Le mot de passe doit contenir au moins 8 caractères.');
       return;
     }
-    if (mode === 'register' && password !== confirm) {
+    if (target === 'register' && password !== confirm) {
       setError('Les mots de passe ne correspondent pas.');
       return;
     }
     setBusy(true);
     try {
-      if (mode === 'login') {
+      if (target === 'login') {
         finish(await auth.login({ phone: phone.trim(), password }));
-      } else if (mode === 'register') {
+      } else if (target === 'register') {
         finish(await auth.register({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim(), password }));
-      } else if (mode === 'forgot') {
+      } else if (target === 'forgot') {
         const res = await auth.forgotPassword(phone.trim());
         if (res.code) setResetCode(res.code);
         toast(res.message || 'Code envoyé.', 'success');
@@ -173,6 +175,8 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
     }
   };
 
+  const submit = (e: FormEvent) => { e.preventDefault(); void run(mode); };
+
   const signInWithGoogle = async (idToken: string) => {
     setError('');
     setBusy(true);
@@ -184,78 +188,130 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
     }
   };
 
-  const footer =
-    mode === 'login' ? (
-      <>
-        <div>Pas encore de compte ? <Link to="/passenger/register">S'inscrire</Link></div>
-        <div style={{ marginTop: 6 }}><Link to="/passenger/forgot">Mot de passe oublié ?</Link></div>
-      </>
-    ) : mode === 'register' ? (
-      <>Déjà inscrit ? <Link to="/passenger/login">Se connecter</Link></>
-    ) : (
-      <>Retour <Link to="/passenger/login">à la connexion</Link></>
-    );
-
-  return (
-    <AuthLayout title={titles[mode][0]} subtitle={titles[mode][1]} footer={footer}>
-      <ErrorBox error={error} />
-      <form onSubmit={(e) => void submit(e)}>
-        {mode === 'register' && (
-          <div className="field-row">
-            <Field label="Prénom" required><input className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></Field>
-            <Field label="Nom" required><input className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></Field>
-          </div>
-        )}
-        {(mode === 'login' || mode === 'register' || mode === 'forgot' || mode === 'reset') && (
+  // Les écrans OTP restent sur une carte simple.
+  if (mode === 'forgot' || mode === 'reset') {
+    return (
+      <AuthLayout title={titles[mode][0]} subtitle={titles[mode][1]} footer={<>Retour <Link to="/passenger/login">à la connexion</Link></>}>
+        <ErrorBox error={error} />
+        <form onSubmit={submit}>
           <Field label="Téléphone" required>
             <input className="input" inputMode="tel" placeholder="+225 07 00 00 00 00" value={phone} onChange={(e) => setPhone(e.target.value)} required />
           </Field>
-        )}
-        {mode === 'reset' && (
-          <Field label="Code de réinitialisation" required>
-            <input className="input" inputMode="numeric" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} required />
-          </Field>
-        )}
-        {(mode === 'login' || mode === 'register' || mode === 'reset') && (
+          {mode === 'reset' && (
+            <Field label="Code de réinitialisation" required>
+              <input className="input" inputMode="numeric" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} required />
+            </Field>
+          )}
           <Field label="Mot de passe" required>
-            <input className="input" type="password" minLength={8} placeholder="8 caractères minimum" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <input className="input" type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
           </Field>
-        )}
-        {mode === 'register' && (
-          <Field label="Confirmer le mot de passe" required>
-            <input className="input" type="password" minLength={8} value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
-          </Field>
-        )}
-        {resetCode && (
-          <div style={{ marginBottom: 12 }}>
-            <Notice tone="info">
-              Votre code de réinitialisation : <strong style={{ fontFamily: 'monospace' }}>{resetCode}</strong>
-            </Notice>
-            <div style={{ marginTop: 8, textAlign: 'right', fontSize: 13 }}>
-              <Link to={`/passenger/reset?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(resetCode)}`}>Saisir le code →</Link>
+          {resetCode && (
+            <div style={{ marginBottom: 12 }}>
+              <Notice tone="info">Votre code : <strong style={{ fontFamily: 'monospace' }}>{resetCode}</strong></Notice>
+              <div style={{ marginTop: 8, textAlign: 'right', fontSize: 13 }}>
+                <Link to={`/passenger/reset?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(resetCode)}`}>Saisir le code →</Link>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          <button className="btn btn-primary btn-block" disabled={busy} type="submit">
+            {busy ? 'Patientez…' : mode === 'forgot' ? 'Envoyer le code' : 'Réinitialiser'}
+            {!busy && <ArrowRight size={16} />}
+          </button>
+        </form>
+      </AuthLayout>
+    );
+  }
+
+  const loginForm = (
+    <>
+      <div className="auth-brand"><span className="auth-logo">V</span><strong>VITOO</strong></div>
+      <h2>Connexion</h2>
+      <p className="muted">Retrouvez vos billets et vos rappels de départ.</p>
+      <ErrorBox error={error} />
+      <form onSubmit={(e) => { e.preventDefault(); void run('login'); }}>
+        <Field label="Téléphone" required>
+          <input className="input" inputMode="tel" placeholder="+225 07 00 00 00 00" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+        </Field>
+        <Field label="Mot de passe" required>
+          <input className="input" type="password" minLength={8} placeholder="8 caractères minimum" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </Field>
+        <div style={{ textAlign: 'right', fontSize: 13, margin: '2px 0 8px' }}>
+          <Link to="/passenger/forgot">Mot de passe oublié ?</Link>
+        </div>
         <button className="btn btn-primary btn-block" disabled={busy} type="submit">
-          {busy ? 'Patientez…' : mode === 'login' ? 'Se connecter' : mode === 'register' ? 'Créer mon compte' : mode === 'forgot' ? 'Envoyer le code' : 'Réinitialiser'}
-          {!busy && <ArrowRight size={16} />}
+          {busy ? 'Patientez…' : 'Se connecter'} {!busy && <ArrowRight size={16} />}
         </button>
       </form>
-      {(mode === 'login' || mode === 'register') && GOOGLE_CLIENT_ID && (
+      {GOOGLE_CLIENT_ID && (
         <>
           <div className="auth-divider"><span>ou continuer avec</span></div>
           <GoogleButton onCredential={(token) => void signInWithGoogle(token)} />
         </>
       )}
       <div className="auth-spaces">{spaceLinks}</div>
-    </AuthLayout>
+    </>
+  );
+
+  const registerForm = (
+    <>
+      <div className="auth-brand"><span className="auth-logo">V</span><strong>VITOO</strong></div>
+      <h2>Créer un compte</h2>
+      <p className="muted">Quelques informations et c'est parti.</p>
+      <ErrorBox error={error} />
+      <form onSubmit={(e) => { e.preventDefault(); void run('register'); }}>
+        <div className="field-row">
+          <Field label="Prénom" required><input className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></Field>
+          <Field label="Nom" required><input className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></Field>
+        </div>
+        <Field label="Téléphone" required>
+          <input className="input" inputMode="tel" placeholder="+225 07 00 00 00 00" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+        </Field>
+        <Field label="Mot de passe" required>
+          <input className="input" type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </Field>
+        <Field label="Confirmer" required>
+          <input className="input" type="password" minLength={8} value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+        </Field>
+        <button className="btn btn-primary btn-block" disabled={busy} type="submit">
+          {busy ? 'Patientez…' : 'Créer mon compte'} {!busy && <ArrowRight size={16} />}
+        </button>
+      </form>
+      {GOOGLE_CLIENT_ID && (
+        <>
+          <div className="auth-divider"><span>ou continuer avec</span></div>
+          <GoogleButton onCredential={(token) => void signInWithGoogle(token)} />
+        </>
+      )}
+      <div className="auth-spaces">{spaceLinks}</div>
+    </>
+  );
+
+  return (
+    <AuthSplit
+      active={mode === 'register'}
+      login={loginForm}
+      register={registerForm}
+      leftPanel={{
+        title: 'Déjà inscrit ?',
+        text: 'Connectez-vous pour retrouver vos billets et vos rappels de départ.',
+        buttonLabel: 'Se connecter',
+        onButton: () => navigate('/passenger/login'),
+      }}
+      rightPanel={{
+        title: 'Nouveau sur Vitoo ?',
+        text: 'Créez votre compte et réservez votre prochain trajet en quelques instants.',
+        buttonLabel: 'Créer un compte',
+        onButton: () => navigate('/passenger/register'),
+      }}
+      dark={theme === 'dark'}
+    />
   );
 }
 
 /* ------------------------------- Compagnie ------------------------------- */
 
 export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
-  const { setCompanySession, toast } = useApp();
+  const { setCompanySession, toast, theme } = useApp();
   const navigate = useNavigate();
   const [form, setForm] = useState({
     companyName: '', rccm: '', taxId: '', city: '', firstName: '', lastName: '', phone: '', email: '', password: '',
@@ -266,8 +322,7 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
   const set = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const run = async (target: 'login' | 'register') => {
     setError('');
     if (form.password.length < 8) {
       setError('Le mot de passe doit contenir au moins 8 caractères.');
@@ -275,7 +330,7 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
     }
     setBusy(true);
     try {
-      const res = mode === 'login'
+      const res = target === 'login'
         ? await auth.loginCompany({ email: form.email.trim(), password: form.password })
         : await auth.registerCompany({
             companyName: form.companyName.trim(),
@@ -297,45 +352,77 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
     }
   };
 
-  return (
-    <AuthLayout
-      title={mode === 'login' ? 'Espace compagnie' : 'Inscrire ma compagnie'}
-      subtitle={mode === 'login' ? 'Gérez vos trajets, chauffeurs et billets.' : 'Créez votre espace en quelques champs.'}
-      footer={mode === 'login' ? <>Pas encore inscrit ? <Link to="/company/register">Créer un compte compagnie</Link></> : <>Déjà inscrit ? <Link to="/company">Se connecter</Link></>}
-    >
+  const loginForm = (
+    <>
+      <div className="auth-brand"><span className="auth-logo">V</span><strong>VITOO</strong></div>
+      <h2>Espace compagnie</h2>
+      <p className="muted">Gérez vos trajets, chauffeurs et billets.</p>
       <ErrorBox error={error} />
-      <form onSubmit={(e) => void submit(e)}>
-        {mode === 'register' && (
-          <>
-            <Field label="Nom de la compagnie" required><input className="input" value={form.companyName} onChange={set('companyName')} required /></Field>
-            <div className="field-row">
-              <Field label="RCCM"><input className="input" value={form.rccm} onChange={set('rccm')} /></Field>
-              <Field label="Numéro fiscal"><input className="input" value={form.taxId} onChange={set('taxId')} /></Field>
-            </div>
-            <Field label="Ville" required><input className="input" value={form.city} onChange={set('city')} required /></Field>
-            <div className="field-row">
-              <Field label="Prénom" required><input className="input" value={form.firstName} onChange={set('firstName')} required /></Field>
-              <Field label="Nom" required><input className="input" value={form.lastName} onChange={set('lastName')} required /></Field>
-            </div>
-            <Field label="Téléphone" required><input className="input" inputMode="tel" value={form.phone} onChange={set('phone')} required /></Field>
-          </>
-        )}
+      <form onSubmit={(e) => { e.preventDefault(); void run('login'); }}>
         <Field label="E-mail" required><input className="input" type="email" value={form.email} onChange={set('email')} required /></Field>
         <Field label="Mot de passe" required><input className="input" type="password" minLength={8} value={form.password} onChange={set('password')} required /></Field>
         <button className="btn btn-primary btn-block" disabled={busy} type="submit">
-          {busy ? 'Patientez…' : mode === 'login' ? 'Se connecter' : 'Créer mon espace'}
-          {!busy && <ArrowRight size={16} />}
+          {busy ? 'Patientez…' : 'Se connecter'} {!busy && <ArrowRight size={16} />}
         </button>
       </form>
       <div className="auth-spaces">{spaceLinks}</div>
-    </AuthLayout>
+    </>
+  );
+
+  const registerForm = (
+    <>
+      <div className="auth-brand"><span className="auth-logo">V</span><strong>VITOO</strong></div>
+      <h2>Inscrire ma compagnie</h2>
+      <p className="muted">Créez votre espace en quelques champs.</p>
+      <ErrorBox error={error} />
+      <form onSubmit={(e) => { e.preventDefault(); void run('register'); }}>
+        <Field label="Nom de la compagnie" required><input className="input" value={form.companyName} onChange={set('companyName')} required /></Field>
+        <div className="field-row">
+          <Field label="RCCM"><input className="input" value={form.rccm} onChange={set('rccm')} /></Field>
+          <Field label="Numéro fiscal"><input className="input" value={form.taxId} onChange={set('taxId')} /></Field>
+        </div>
+        <Field label="Ville" required><input className="input" value={form.city} onChange={set('city')} required /></Field>
+        <div className="field-row">
+          <Field label="Prénom" required><input className="input" value={form.firstName} onChange={set('firstName')} required /></Field>
+          <Field label="Nom" required><input className="input" value={form.lastName} onChange={set('lastName')} required /></Field>
+        </div>
+        <Field label="Téléphone" required><input className="input" inputMode="tel" value={form.phone} onChange={set('phone')} required /></Field>
+        <Field label="E-mail" required><input className="input" type="email" value={form.email} onChange={set('email')} required /></Field>
+        <Field label="Mot de passe" required><input className="input" type="password" minLength={8} value={form.password} onChange={set('password')} required /></Field>
+        <button className="btn btn-primary btn-block" disabled={busy} type="submit">
+          {busy ? 'Patientez…' : 'Créer mon espace'} {!busy && <ArrowRight size={16} />}
+        </button>
+      </form>
+      <div className="auth-spaces">{spaceLinks}</div>
+    </>
+  );
+
+  return (
+    <AuthSplit
+      active={mode === 'register'}
+      login={loginForm}
+      register={registerForm}
+      leftPanel={{
+        title: 'Vous avez déjà un espace ?',
+        text: 'Connectez-vous pour piloter votre activité.',
+        buttonLabel: 'Se connecter',
+        onButton: () => navigate('/company/login'),
+      }}
+      rightPanel={{
+        title: 'Vous transportez des voyageurs ?',
+        text: 'Créez votre espace compagnie et commencez à vendre vos trajets.',
+        buttonLabel: 'Créer un espace',
+        onButton: () => navigate('/company/register'),
+      }}
+      dark={theme === 'dark'}
+    />
   );
 }
 
 /* ---------------------------------- Admin ---------------------------------- */
 
 export function AdminLogin() {
-  const { setUserSession, toast } = useApp();
+  const { setUserSession, toast, theme } = useApp();
   const navigate = useNavigate();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -363,20 +450,39 @@ export function AdminLogin() {
   };
 
   return (
-    <AuthLayout
-      title="Administration"
-      subtitle="Espace réservé aux administrateurs Vitoo."
-      footer={spaceLinks}
-    >
-      <ErrorBox error={error} />
-      <form onSubmit={(e) => void submit(e)}>
-        <div className="auth-secure">
-          <ShieldCheck size={18} /> <LockKeyhole size={16} /> <span>Connexion sécurisée</span>
-        </div>
-        <Field label="Téléphone" required><input className="input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required /></Field>
-        <Field label="Mot de passe" required><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></Field>
-        <button className="btn btn-primary btn-block" disabled={busy} type="submit">{busy ? 'Connexion…' : 'Se connecter'}</button>
-      </form>
-    </AuthLayout>
+    <AuthSplit
+      active={false}
+      login={
+        <>
+          <div className="auth-brand"><span className="auth-logo">V</span><strong>VITOO</strong></div>
+          <h2>Administration</h2>
+          <p className="muted">Espace réservé aux administrateurs Vitoo.</p>
+          <ErrorBox error={error} />
+          <form onSubmit={(e) => void submit(e)}>
+            <div className="auth-secure">
+              <ShieldCheck size={18} /> <LockKeyhole size={16} /> <span>Connexion sécurisée</span>
+            </div>
+            <Field label="Téléphone" required><input className="input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required /></Field>
+            <Field label="Mot de passe" required><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></Field>
+            <button className="btn btn-primary btn-block" disabled={busy} type="submit">{busy ? 'Connexion…' : 'Se connecter'}</button>
+          </form>
+          <div className="auth-spaces">{spaceLinks}</div>
+        </>
+      }
+      register={<></>}
+      leftPanel={{
+        title: 'Espace passager',
+        text: 'Vous cherchez un trajet ? Rendez-vous sur l’espace passager.',
+        buttonLabel: 'Espace passager',
+        onButton: () => navigate('/passenger'),
+      }}
+      rightPanel={{
+        title: 'Administration Vitoo',
+        text: 'Gérez les comptes et suivez l’activité de la plateforme.',
+        buttonLabel: 'Continuer',
+        onButton: () => navigate('/passenger'),
+      }}
+      dark={theme === 'dark'}
+    />
   );
 }

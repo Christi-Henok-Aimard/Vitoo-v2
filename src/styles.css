@@ -663,6 +663,137 @@ status-pill { pointer-events: none; }
   border: 1px solid var(--border);
 }
 
+/* ------------------- Auth en deux panneaux animés (KBR style) ----------- */
+.auth-split-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+}
+.auth-split {
+  position: relative;
+  width: 860px;
+  max-width: 100%;
+  min-height: 640px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+}
+.auth-split .split-form {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 36px;
+  overflow-y: auto;
+  transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
+  background: var(--surface);
+}
+.split-form-inner { width: 100%; max-width: 340px; }
+.split-form-inner h2 { font-size: 26px; margin-bottom: 6px; color: var(--text); }
+.split-form-inner .muted { font-size: 13px; margin-bottom: 18px; }
+.split-form .field { margin-bottom: 10px; }
+.split-form .btn-block { margin-top: 8px; }
+.split-sign-in { left: 0; z-index: 2; }
+.auth-split.active .split-sign-in { transform: translateX(100%); }
+.split-sign-up { left: 0; width: 50%; opacity: 0; z-index: 1; }
+.auth-split.active .split-sign-up {
+  transform: translateX(100%);
+  opacity: 1;
+  z-index: 5;
+  animation: split-move 0.6s;
+}
+@keyframes split-move {
+  0%, 49.99% { opacity: 0; z-index: 1; }
+  50%, 100% { opacity: 1; z-index: 5; }
+}
+.split-toggle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 100%;
+  overflow: hidden;
+  transition: transform 0.6s ease-in-out;
+  z-index: 10;
+}
+.auth-split.active .split-toggle { transform: translateX(-100%); }
+.split-toggle-inner {
+  background: var(--primary);
+  color: #fff;
+  height: 100%;
+  position: relative;
+  left: -100%;
+  width: 200%;
+  transform: translateX(0);
+  transition: transform 0.6s ease-in-out;
+}
+.auth-split.active .split-toggle-inner { transform: translateX(50%); }
+.split-panel {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 32px;
+  transition: transform 0.6s ease-in-out;
+}
+.split-panel h2 { font-size: 30px; line-height: 1.2; margin: 0 0 14px; }
+.split-panel p { font-size: 14px; opacity: 0.9; margin: 0 0 22px; line-height: 1.5; }
+.split-panel-left { transform: translateX(-200%); }
+.auth-split.active .split-panel-left { transform: translateX(0); }
+.split-panel-right { right: 0; transform: translateX(0); }
+.auth-split.active .split-panel-right { transform: translateX(200%); }
+.split-ghost-btn {
+  background: transparent;
+  border: 1px solid #fff;
+  color: #fff;
+  border-radius: 8px;
+  padding: 11px 38px;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.split-ghost-btn:hover { background: #fff; color: var(--primary); }
+.auth-split .auth-divider { margin-top: 16px; }
+.auth-split .auth-spaces { margin-top: 14px; font-size: 12px; text-align: center; }
+.auth-split.is-dark .split-form { background: var(--surface); }
+@media (max-width: 760px) {
+  .auth-split-shell { padding: 0; }
+  .auth-split { min-height: auto; border-radius: 0; border: 0; box-shadow: none; }
+  .auth-split .split-form {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    opacity: 1;
+    transform: none;
+    z-index: 1;
+    padding: 28px 22px;
+  }
+  .auth-split .split-toggle { display: none; }
+  .auth-split:not(.active) .split-sign-up { display: none; }
+  .auth-split.active .split-sign-in { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-split, .auth-split .split-form, .split-toggle, .split-toggle-inner, .split-panel { transition: none !important; }
+  .auth-split.active .split-sign-up { animation: none; }
+}
+
 /* ------------------------------- Responsive ----------------------------- */
 @media (max-width: 768px) {
   .card-pad { padding: 16px; }
