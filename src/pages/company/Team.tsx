@@ -4,7 +4,7 @@ import { companyApi, errorMessage, type PassengerLookup } from '../../api';
 import { useApp } from '../../lib/context';
 import { initials } from '../../lib/format';
 import { useAsync, usePolling } from '../../lib/hooks';
-import { ConfirmModal, Empty, ErrorView, Field, Loading, Modal, Notice, PageHeader, StatusBadge } from '../../lib/ui';
+import { ConfirmModal, Empty, ErrorView, Field, ListSkeleton, Modal, Notice, PageHeader, StatusBadge } from '../../lib/ui';
 import type { Driver, Vehicle } from '../../types';
 
 type Target = { kind: 'driver'; item?: Driver } | { kind: 'vehicle'; item?: Vehicle };
@@ -178,7 +178,7 @@ export function CompanyTeamPage() {
             <strong>Mes chauffeurs</strong>
             <button className="btn btn-primary btn-sm" onClick={() => openForm({ kind: 'driver' })}><Plus size={14} /> Ajouter un chauffeur</button>
           </div>
-          {drivers.loading ? <Loading /> : drivers.error ? <ErrorView message={drivers.error} retry={() => void drivers.reload()} /> : drivers.data.drivers.length === 0 ? (
+          {drivers.loading ? <ListSkeleton /> : drivers.error ? <ErrorView message={drivers.error} retry={() => void drivers.reload()} /> : drivers.data.drivers.length === 0 ? (
             <Empty icon={UserCog} title="Aucun chauffeur" text="Cherchez un passager existant pour le promouvoir chauffeur." />
           ) : (
             <div className="table-wrap">
@@ -210,7 +210,7 @@ export function CompanyTeamPage() {
             <strong>Mes véhicules</strong>
             <button className="btn btn-primary btn-sm" onClick={() => openForm({ kind: 'vehicle' })}><Plus size={14} /> Ajouter</button>
           </div>
-          {vehicles.loading ? <Loading /> : vehicles.error ? <ErrorView message={vehicles.error} retry={() => void vehicles.reload()} /> : vehicles.data.vehicles.length === 0 ? (
+          {vehicles.loading ? <ListSkeleton /> : vehicles.error ? <ErrorView message={vehicles.error} retry={() => void vehicles.reload()} /> : vehicles.data.vehicles.length === 0 ? (
             <Empty icon={CarFront} title="Aucun véhicule" text="Ajoutez un véhicule à votre flotte." />
           ) : (
             <div className="table-wrap">

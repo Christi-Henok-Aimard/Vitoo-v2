@@ -1,15 +1,8 @@
-import { useEffect, type ReactNode } from 'react';
-import {
-  AlertCircle,
-  CheckCircle2,
-  Info,
-  Loader2,
-  Star,
-  X,
-  type LucideIcon,
-} from 'lucide-react';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { Loader2, Star, X, type LucideIcon } from 'lucide-react';
 import { STATUS_LABEL, statusTone } from './format';
 import { useApp } from './context';
+import { kbrAppearance, type KbrHandle } from '../components/kbr';
 
 export function Spinner({ label }: { label?: string }) {
   return (
@@ -56,12 +49,46 @@ export function Notice({
 }
 
 export function StatusBadge({ status }: { status?: string | null }) {
+  const { theme } = useApp();
   const tone = statusTone(status);
+  const label = STATUS_LABEL[status || ''] || status || '—';
+  const accent: Record<ReturnType<typeof statusTone>, string> = {
+    success: '#16a34a',
+    warning: '#f59e0b',
+    danger: '#dc2626',
+    primary: '#1d5df5',
+    neutral: '#6b7280',
+  };
   return (
-    <span className={`badge ${tone === 'neutral' ? '' : `badge-${tone}`}`}>
-      <span className="dot" />
-      {STATUS_LABEL[status || ''] || status || '—'}
-    </span>
+    <status-pill
+      idle-label={label}
+      busy-label={label}
+      done-label={label}
+      fail-label={label}
+      retry-label="Réessayer"
+      accent={accent[tone]}
+      reset-after="8"
+      appearance={kbrAppearance(theme)}
+      aria-label={label}
+    />
+  );
+}
+
+/** Liste en chargement, rendue avec le composant KBR `skeleton-list`. */
+export function ListSkeleton({ label = 'Chargement…', rows = 3 }: { label?: string; rows?: number }) {
+  const { theme } = useApp();
+  return (
+    <div className="skeleton-wrap">
+      {label && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{label}</div>}
+      <skeleton-list
+        rows={rows}
+        avatars="false"
+        meta="false"
+        shimmer="true"
+        auto-demo="false"
+        appearance={kbrAppearance(theme)}
+      />
+    </div>
   );
 }
 
@@ -239,23 +266,43 @@ export function StatCard({
   );
 }
 
+function KbrToast({ message, appearance }: { message: string; appearance: 'light' | 'dark' }) {
+  const ref = useRef<KbrHandle | null>(null);
+  useEffect(() => {
+    // `show()` est exposée par le composant KBR ; les appels avant connexion
+    // sont mis en file par le custom element.
+    ref.current?.show?.(message);
+  }, [message]);
+  return (
+    <toast-message
+      ref={ref}
+      message={message}
+      show-undo="false"
+      seconds="3.8"
+      appearance={appearance}
+    />
+  );
+}
+
 export function Toasts() {
-  const { toasts, dismissToast } = useApp();
+  const { toasts, dismissToast, theme } = useApp();
   if (!toasts.length) return null;
+  const appearance = kbrAppearance(theme);
   return (
     <div className="toast-host">
-      {toasts.map((t) => {
-        const Icon = t.type === 'success' ? CheckCircle2 : t.type === 'error' ? AlertCircle : Info;
-        return (
-          <div key={t.id} className={`toast ${t.type}`}>
-            <Icon size={17} style={{ flexShrink: 0, marginTop: 1 }} />
-            <span style={{ flex: 1 }}>{t.message}</span>
-            <button className="btn btn-ghost btn-icon" style={{ width: 24, height: 24 }} onClick={() => dismissToast(t.id)} aria-label="Fermer">
-              <X size={14} />
-            </button>
-          </div>
-        );
-      })}
+      {toasts.map((t) => (
+        <div key={t.id} className={`toast toast-kbr ${t.type}`}>
+          <KbrToast message={t.message} appearance={appearance} />
+          <button
+            className="btn btn-ghost btn-icon kbr-toast-close"
+            style={{ width: 24, height: 24 }}
+            onClick={() => dismissToast(t.id)}
+            aria-label="Fermer"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

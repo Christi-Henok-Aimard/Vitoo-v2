@@ -5,7 +5,7 @@ import { driverApi, errorMessage } from '../../api';
 import { useApp } from '../../lib/context';
 import { useAsync, usePolling } from '../../lib/hooks';
 import { formatDate, formatMoney } from '../../lib/format';
-import { Empty, ErrorView, Loading, Notice, PageHeader, StatusBadge } from '../../lib/ui';
+import { Empty, ErrorView, ListSkeleton, Notice, PageHeader, StatusBadge } from '../../lib/ui';
 import type { Trip } from '../../types';
 
 type Tab = 'active' | 'upcoming' | 'completed' | 'all';
@@ -38,7 +38,7 @@ export function DriverMissionsPage() {
   const filtered = tab === 'all' ? data.trips : tab === 'active' ? active : tab === 'upcoming' ? upcoming : completed;
   const driverName = `${driverInfo?.user?.firstName || driverInfo?.firstName || ''} ${driverInfo?.user?.lastName || driverInfo?.lastName || ''}`.trim();
 
-  if (loading) return <Loading label="Chargement de vos missions…" />;
+  if (loading) return <ListSkeleton label="Chargement de vos missions…" rows={3} />;
   if (error) return <ErrorView message={error} retry={() => void reload()} />;
 
   return (

@@ -454,6 +454,41 @@ button, input, select, textarea {
 .toast.success { border-left-color: var(--success); }
 .toast.error { border-left-color: var(--danger); }
 
+/* Intégration KBR-UI — habillage sobre, sans effet de verre ni d'aplomb. */
+.toast-kbr {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.toast-kbr toast-message {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+}
+.toast-kbr .kbr-toast-close {
+  position: absolute;
+  top: 1px;
+  right: -24px;
+  z-index: 2;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+status-pill { pointer-events: none; }
+.skeleton-wrap { width: 100%; overflow: hidden; }
+.kbr-ticket-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0;
+  overflow-x: auto;
+}
+.kbr-ticket-wrap tear-ticket { max-width: 100%; }
+
 .star-btn {
   background: none;
   border: none;

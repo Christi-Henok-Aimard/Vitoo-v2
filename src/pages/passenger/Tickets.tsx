@@ -5,7 +5,7 @@ import { tripsApi } from '../../api';
 import { useAsync } from '../../lib/hooks';
 import { companyName, formatDate, formatMoney } from '../../lib/format';
 import { useApp } from '../../lib/context';
-import { Empty, ErrorView, Loading, PageHeader, StatusBadge } from '../../lib/ui';
+import { Empty, ErrorView, ListSkeleton, PageHeader, StatusBadge } from '../../lib/ui';
 import { TicketCard } from '../../components/TicketCard';
 import { RatingModal } from '../../components/RatingModal';
 import type { Booking } from '../../types';
@@ -23,7 +23,7 @@ export function TicketsPage() {
   return (
     <>
       <PageHeader title="Mes billets" subtitle="Présentez le QR code ou le code au chauffeur lors de l'embarquement." />
-      {loading ? <Loading label="Chargement de vos billets…" /> : error ? <ErrorView message={error} retry={() => void reload()} /> : (
+      {loading ? <ListSkeleton label="Chargement de vos billets…" rows={3} /> : error ? <ErrorView message={error} retry={() => void reload()} /> : (
         <>
           <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
             {(['all', 'active', 'used'] as const).map((f) => (
@@ -63,7 +63,7 @@ export function BookingsPage() {
   return (
     <>
       <PageHeader title="Mes réservations" subtitle="Historique complet de vos réservations." />
-      {loading ? <Loading label="Chargement…" /> : error ? <ErrorView message={error} retry={() => void reload()} /> : data.bookings.length === 0 ? (
+      {loading ? <ListSkeleton label="Chargement…" rows={2} /> : error ? <ErrorView message={error} retry={() => void reload()} /> : data.bookings.length === 0 ? (
         <Empty icon={History} title="Aucune réservation" action={<Link className="btn btn-primary" to="/passenger">Trouver un trajet</Link>} />
       ) : (
         <div className="card table-wrap">

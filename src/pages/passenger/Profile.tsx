@@ -1,10 +1,11 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Camera, CarFront, CircleHelp, Globe2, LogOut, Mail, Moon, Phone, ShieldCheck, Sun, UserRound } from 'lucide-react';
 import { auth, errorMessage } from '../../api';
 import { useApp } from '../../lib/context';
 import { updateUserSessionUser } from '../../session';
 import { Field, Notice, PageHeader } from '../../lib/ui';
+import { kbrAppearance, type KbrHandle } from '../../components/kbr';
 
 const FAQ = [
   { q: 'Comment obtenir mon billet ?', a: 'Après votre réservation, rendez-vous dans « Mes billets ». Vous pouvez afficher le QR code, l’imprimer ou le télécharger en PDF.' },
@@ -12,6 +13,31 @@ const FAQ = [
   { q: 'Quand reçois-je les rappels ?', a: 'Vous recevez des rappels 48 h, 24 h, 6 h, 2 h et 10 minutes avant le départ, ainsi que les annonces du chauffeur.' },
   { q: 'Comment noter un trajet ?', a: 'Après l’arrivée, une notification apparaît dans la cloche. Cliquez sur « Noter le trajet » pour évaluer la compagnie et le chauffeur.' },
 ];
+
+/** Sélecteur de thème KBR ; le bouton natif reste comme repli visible. */
+function ThemeSwitch({ theme, toggleTheme }: { theme: 'light' | 'dark'; toggleTheme: () => void }) {
+  const ref = useRef<KbrHandle | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onChange = (event: Event) => {
+      const value = (event as CustomEvent<{ value?: string }>).detail?.value;
+      const next = value === 'Sombre' ? 'dark' : value === 'Clair' ? 'light' : null;
+      if (next && next !== theme) toggleTheme();
+    };
+    el.addEventListener('change', onChange);
+    return () => el.removeEventListener('change', onChange);
+  }, [theme, toggleTheme]);
+  return (
+    <segmented-control
+      ref={ref}
+      options="Clair, Sombre"
+      selected={theme === 'dark' ? 'Sombre' : 'Clair'}
+      appearance={kbrAppearance(theme)}
+      aria-label="Thème de l'interface"
+    />
+  );
+}
 
 export function PassengerProfilePage() {
   const { userSession, theme, toggleTheme, lang, toggleLang, logoutUser, toast } = useApp();
@@ -26,7 +52,6 @@ export function PassengerProfilePage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -176,9 +201,14 @@ export function PassengerProfilePage() {
 
           <div className="card card-pad">
             <div className="label" style={{ marginBottom: 10 }}>Préférences</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{theme === 'dark' ? <Moon size={17} /> : <Sun size={17} />} Thème sombre</span>
-              <button className={`btn btn-sm ${theme === 'dark' ? 'btn-secondary' : ''}`} onClick={toggleTheme}>{theme === 'dark' ? 'Activé' : 'Désactivé'}</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ThemeSwitch theme={theme} toggleTheme={toggleTheme} />
+                <button className="btn btn-sm" onClick={toggleTheme} aria-label="Inverser le thème">
+                  {theme === 'dark' ? 'Clair' : 'Sombre'}
+                </button>
+              </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
               <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Globe2 size={17} /> Langue</span>
@@ -192,15 +222,18 @@ export function PassengerProfilePage() {
 
           <div className="card card-pad">
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}><CircleHelp size={18} /> <strong>Aide & support</strong></div>
-            {FAQ.map((item, i) => (
-              <div key={item.q} style={{ borderBottom: '1px solid var(--border)' }}>
-                <button className="btn btn-ghost btn-sm btn-block" style={{ justifyContent: 'space-between', height: 'auto', padding: '10px 0' }} onClick={() => setOpenFaq(openFaq === i ? null : i)}>
-                  <span style={{ textAlign: 'left', whiteSpace: 'normal' }}>{item.q}</span>
-                  <span>{openFaq === i ? '−' : '+'}</span>
-                </button>
-                {openFaq === i && <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>{item.a}</p>}
-              </div>
-            ))}
+            <accordion-list
+              q-1={FAQ[0].q}
+              a-1={FAQ[0].a}
+              q-2={FAQ[1].q}
+              a-2={FAQ[1].a}
+              q-3={FAQ[2].q}
+              a-3={FAQ[2].a}
+              q-4={FAQ[3].q}
+              a-4={FAQ[3].a}
+              width="300"
+              appearance={kbrAppearance(theme)}
+            />
             <div style={{ marginTop: 12, fontSize: 12 }} className="muted">
               <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><Mail size={13} /> support@vitoo.ci</span>
               <span style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}><Phone size={13} /> +225 00 00 00 00 00</span>

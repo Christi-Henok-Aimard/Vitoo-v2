@@ -11,3 +11,5 @@ backend/prisma/*.db-journal
 .DS_Store
 android/
 ios/
+.kbr-key
+.kbr-ui

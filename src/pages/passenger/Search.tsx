@@ -1,10 +1,12 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeftRight, CalendarDays, MapPin, Search as SearchIcon, SlidersHorizontal, Star, Ticket, Users } from 'lucide-react';
 import { tripsApi } from '../../api';
+import { useApp } from '../../lib/context';
 import { useAsync } from '../../lib/hooks';
 import { companyName, formatDate, formatMoney, todayInput, tripStops } from '../../lib/format';
-import { Empty, ErrorView, Field, Loading, PageHeader, StatusBadge } from '../../lib/ui';
+import { Empty, ErrorView, Field, ListSkeleton, PageHeader, StatusBadge } from '../../lib/ui';
+import { kbrAppearance, type KbrHandle } from '../../components/kbr';
 import type { Trip } from '../../types';
 
 export function TripCard({ trip }: { trip: Trip }) {
@@ -51,8 +53,33 @@ export function TripCard({ trip }: { trip: Trip }) {
   );
 }
 
+/** Tri des résultats via le composant KBR `select-menu`. */
+function SortSelect({ value, onChange, appearance }: { value: 'date' | 'price'; onChange: (value: 'date' | 'price') => void; appearance: 'light' | 'dark' }) {
+  const ref = useRef<KbrHandle | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onChanged = (event: Event) => {
+      const selected = (event as CustomEvent<{ value?: string }>).detail?.value;
+      onChange(selected === 'Prix croissant' ? 'price' : 'date');
+    };
+    el.addEventListener('change', onChanged);
+    return () => el.removeEventListener('change', onChanged);
+  }, [onChange]);
+  return (
+    <select-menu
+      ref={ref}
+      label="Trier par"
+      options="Date de départ,Prix croissant"
+      selected={value === 'price' ? 'Prix croissant' : 'Date de départ'}
+      appearance={appearance}
+    />
+  );
+}
+
 export function SearchPage() {
   const navigate = useNavigate();
+  const { theme } = useApp();
   const [depart, setDepart] = useState('');
   const [arrivee, setArrivee] = useState('');
   const [date, setDate] = useState('');
@@ -120,10 +147,7 @@ export function SearchPage() {
                 <input className="input" inputMode="numeric" placeholder="5000" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
               </Field>
               <Field label="Trier par">
-                <select className="select" value={sort} onChange={(e) => setSort(e.target.value as 'date' | 'price')}>
-                  <option value="date">Date de départ</option>
-                  <option value="price">Prix croissant</option>
-                </select>
+                <SortSelect value={sort} onChange={setSort} appearance={kbrAppearance(theme)} />
               </Field>
             </div>
           )}
@@ -131,7 +155,7 @@ export function SearchPage() {
       </div>
 
       {trips.loading ? (
-        <Loading label="Recherche de trajets…" />
+        <ListSkeleton label="Recherche de trajets…" rows={3} />
       ) : trips.error ? (
         <ErrorView message={trips.error} retry={() => void trips.reload()} />
       ) : results.length === 0 ? (

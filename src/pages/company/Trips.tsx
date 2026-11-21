@@ -6,7 +6,7 @@ import { useApp } from '../../lib/context';
 import { useAsync, usePolling } from '../../lib/hooks';
 import { normalizeMethods } from '../../paymentMethods';
 import { formatDate, formatMoney, todayInput, tripStops } from '../../lib/format';
-import { ConfirmModal, Empty, ErrorView, Field, Loading, Modal, Notice, PageHeader, StatusBadge } from '../../lib/ui';
+import { ConfirmModal, Empty, ErrorView, Field, ListSkeleton, Modal, Notice, PageHeader, StatusBadge } from '../../lib/ui';
 import type { Driver, Trip, Vehicle } from '../../types';
 
 interface TripForm {
@@ -127,7 +127,7 @@ export function CompanyTripsPage() {
         subtitle="Créez et gérez vos départs."
         actions={<button className="btn btn-primary btn-sm" onClick={() => openEdit('new')}><Plus size={15} /> Nouveau trajet</button>}
       />
-      {loading ? <Loading /> : error ? <ErrorView message={error} retry={() => void reload()} /> : data.trips.length === 0 ? (
+      {loading ? <ListSkeleton /> : error ? <ErrorView message={error} retry={() => void reload()} /> : data.trips.length === 0 ? (
         <Empty icon={Users} title="Aucun trajet" text="Créez votre premier trajet pour commencer à vendre des billets." action={<button className="btn btn-primary" onClick={() => openEdit('new')}>Créer un trajet</button>} />
       ) : (
         <div className="card table-wrap">
