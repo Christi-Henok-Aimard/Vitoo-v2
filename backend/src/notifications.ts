@@ -74,6 +74,66 @@ const sendOptionalChannels = async (userId: string, subject: string, text: strin
   }
 };
 
+/**
+ * Envoi direct (e-mail / SMS) à des coordonnées fournies.
+ * Utilisé notamment pour prévenir un compte supprimé par un admin :
+ * la notification en base disparaîtrait avec le compte, seul un canal
+ * externe peut donc être utilisé. Retourne true si au moins un canal
+ * était configuré (même si l'envoi a échoué, il est best-effort).
+ */
+export const sendDirectMessage = async (
+  contacts: { email?: string | null; phone?: string | null },
+  subject: string,
+  text: string,
+): Promise<boolean> => {
+  let configured = false;
+  try {
+    if (process.env.RESEND_API_KEY && contacts.email) {
+      configured = true;
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: process.env.RESEND_FROM_EMAIL || 'Vitoo <onboarding@resend.dev>',
+          to: [contacts.email],
+          subject,
+          text,
+        }),
+      });
+    }
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM_NUMBER && contacts.phone) {
+      configured = true;
+      const sid = process.env.TWILIO_ACCOUNT_SID;
+      const auth = Buffer.from(`${sid}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
+      await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+        method: 'POST',
+        headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ To: contacts.phone, From: process.env.TWILIO_FROM_NUMBER, Body: text }),
+      });
+    }
+    if (process.env.AFRICAS_TALKING_USERNAME && process.env.AFRICAS_TALKING_API_KEY && contacts.phone) {
+      configured = true;
+      const params: Record<string, string> = {
+        username: process.env.AFRICAS_TALKING_USERNAME,
+        to: contacts.phone,
+        message: text,
+      };
+      if (process.env.AFRICAS_TALKING_FROM) params.from = process.env.AFRICAS_TALKING_FROM;
+      await fetch('https://api.africastalking.com/version1/messaging', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'api-key': process.env.AFRICAS_TALKING_API_KEY },
+        body: new URLSearchParams(params),
+      });
+    }
+  } catch (error) {
+    console.warn('[notifications] message direct ignoré :', error);
+  }
+  return configured;
+};
+
 export interface NotificationInput {
   userId: string;
   tripId?: string | null;

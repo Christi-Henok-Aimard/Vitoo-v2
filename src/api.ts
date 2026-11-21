@@ -280,7 +280,7 @@ export const adminApi = {
   patchUser: (token: string, id: string, body: { role?: string }) =>
     request<{ user: User }>(`/admin/users/${encodeURIComponent(id)}`, { method: 'PATCH', token, body }),
   deleteUser: (token: string, id: string) =>
-    request<{ success?: boolean }>(`/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE', token }),
+    request<{ message?: string; messageSent?: boolean }>(`/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE', token }),
 };
 
 /* -------------------------------- Santé ------------------------------- */

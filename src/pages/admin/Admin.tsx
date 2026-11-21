@@ -43,8 +43,13 @@ export function AdminDashboardPage() {
         await adminApi.patchUser(token, action.user.id, { role: 'passenger' });
         toast('Utilisateur rétrogradé en passager.', 'success');
       } else {
-        await adminApi.deleteUser(token, action.user.id);
-        toast('Utilisateur supprimé.', 'success');
+        const result = await adminApi.deleteUser(token, action.user.id);
+        toast(
+          result.messageSent
+            ? 'Compte supprimé. Un message a été envoyé à la personne.'
+            : 'Compte et données supprimés. Aucun e-mail/SMS configuré : aucun message n’a pu être envoyé.',
+          result.messageSent ? 'success' : 'info',
+        );
       }
       setAction(null);
       setDetail(null);
@@ -148,7 +153,7 @@ export function AdminDashboardPage() {
           title={action.type === 'ban' ? 'Bannir cet utilisateur ?' : 'Supprimer cet utilisateur ?'}
           message={action.type === 'ban'
             ? `${action.user.firstName} ${action.user.lastName} sera rétrogradé au rôle passager.`
-            : `${action.user.firstName} ${action.user.lastName} sera définitivement supprimé.`}
+            : `${action.user.firstName} ${action.user.lastName} sera définitivement supprimé, ainsi que ses réservations, billets, notifications et (si c'est une compagnie) ses trajets et véhicules. Un message sera envoyé si un e-mail ou un SMS est configuré.`}
           confirmLabel={action.type === 'ban' ? 'Bannir' : 'Supprimer'}
           danger
           onClose={() => setAction(null)}

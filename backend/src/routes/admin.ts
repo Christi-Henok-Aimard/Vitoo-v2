@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { Role } from '@prisma/client';
 import { prisma } from '../db.js';
 import { publicUser, requireAuth, requireRole } from '../auth.js';
+import { sendDirectMessage } from '../notifications.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole('admin'));
@@ -76,6 +77,48 @@ adminRouter.delete('/users/:id', async (request, response) => {
   }
   const user = await prisma.user.findUnique({ where: { id: request.params.id } });
   if (!user) return response.status(404).json({ message: 'Utilisateur introuvable.' });
-  await prisma.user.delete({ where: { id: user.id } });
-  return response.json({ message: 'Utilisateur supprimé.' });
+
+  // Prévenir la personne AVANT la suppression : une notification en base
+  // disparaîtrait avec son compte, seul un e-mail/SMS peut survivre.
+  const messageSent = await sendDirectMessage(
+    { email: user.email, phone: user.phone },
+    'Votre compte Vitoo a été supprimé',
+    `Bonjour ${user.firstName}, votre compte Vitoo ainsi que vos réservations, billets et notifications ont été supprimés par un administrateur. Si vous pensez qu'il s'agit d'une erreur, contactez le support Vitoo.`,
+  );
+
+  // Identifiants des données à effacer, y compris celles d'une compagnie
+  // (trajets, véhicules, billets) qui ne sont pas liées par une FK cascade.
+  const companyTrips = user.role === 'company'
+    ? await prisma.trip.findMany({ where: { companyId: user.id }, select: { id: true } })
+    : [];
+  const companyTripIds = companyTrips.map((trip) => trip.id);
+  const ownedBookings = await prisma.booking.findMany({ where: { userId: user.id }, select: { id: true } });
+  const companyBookings = companyTripIds.length
+    ? await prisma.booking.findMany({ where: { tripId: { in: companyTripIds } }, select: { id: true } })
+    : [];
+  const bookingIds = [...new Set([...ownedBookings, ...companyBookings].map((booking) => booking.id))];
+  const drivers = await prisma.driver.findMany({
+    where: { OR: [{ userId: user.id }, { companyId: user.id }] },
+    select: { id: true },
+  });
+  const driverIds = drivers.map((driver) => driver.id);
+
+  await prisma.$transaction([
+    prisma.payment.deleteMany({ where: { bookingId: { in: bookingIds } } }),
+    prisma.notification.deleteMany({ where: { tripId: { in: companyTripIds } } }),
+    prisma.notification.deleteMany({ where: { userId: user.id } }),
+    prisma.ticket.deleteMany({ where: { OR: [{ tripId: { in: companyTripIds } }, { bookingId: { in: bookingIds } }] } }),
+    prisma.rating.deleteMany({ where: { OR: [{ tripId: { in: companyTripIds } }, { userId: user.id }] } }),
+    prisma.incident.deleteMany({ where: { OR: [{ tripId: { in: companyTripIds } }, { driverId: { in: driverIds } }] } }),
+    prisma.booking.deleteMany({ where: { OR: [{ tripId: { in: companyTripIds } }, { userId: user.id }] } }),
+    prisma.trip.deleteMany({ where: { companyId: user.id } }),
+    prisma.vehicle.deleteMany({ where: { companyId: user.id } }),
+    prisma.driver.deleteMany({ where: { OR: [{ userId: user.id }, { companyId: user.id }] } }),
+    prisma.user.delete({ where: { id: user.id } }),
+  ]);
+
+  return response.json({
+    message: 'Utilisateur et toutes ses données supprimés.',
+    messageSent,
+  });
 });
