@@ -44,6 +44,10 @@ npm run dev          # http://localhost:5173
 
 La compagnie active ses moyens depuis son profil et ses trajets via des **boutons** : Espèces, Wave, Orange Money, MTN MoMo, Moov Money, Carte bancaire. Le passager ne voit que les moyens activés pour le trajet choisi. « Espèces » crée le billet immédiatement (paiement à l'embarquement) ; les autres moyens redirigent vers GeniusPay. Sans clés GeniusPay, le backend répond 503 volontairement — aucun faux billet n'est créé.
 
+## Identité visuelle
+
+Le logo Vitoo (symbole « V » cyan) est utilisé sur l'authentification, l'en-tête et le favicon. La couleur primaire de toute l'application est le cyan du logo (`#0ea5e9`, plus clair en mode sombre `#38bdf8`).
+
 ## Composants KBR-UI
 
 L'interface utilise des composants animés de [KBR-UI](https://ui.rodolphekouadio.com) (créé par Kouadio Bah Rodolphe) : billet détachable, bouton copier, pilule de statut, toast, liste squelette, contrôle segmenté, select, accordéon. Les fichiers sont vendorisés dans `public/vendor/kbr/` et chargés depuis `index.html`. Chaque composant reçoit `appearance="light" | "dark"` selon le thème choisi dans l'application (bascule clair/sombre).
