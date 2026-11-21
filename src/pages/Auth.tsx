@@ -89,10 +89,7 @@ function AuthLayout({
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-brand">
-          <span className="auth-logo">V</span>
-          <strong>VITOO</strong>
-        </div>
+        <img className="auth-brand-logo" src="/vitoo-logo.jpg" alt="Vitoo" />
         <h2 style={{ fontSize: 22 }}>{title}</h2>
         <p className="muted" style={{ fontSize: 13, margin: '5px 0 20px' }}>{subtitle}</p>
         {children}
@@ -224,7 +221,7 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
 
   const loginForm = (
     <>
-      <div className="auth-brand"><span className="auth-logo">V</span><strong>VITOO</strong></div>
+      <img className="auth-brand-logo" src="/vitoo-logo.jpg" alt="Vitoo" />
       <h2>Connexion</h2>
       <p className="muted">Retrouvez vos billets et vos rappels de départ.</p>
       <ErrorBox error={error} />
@@ -254,7 +251,7 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
 
   const registerForm = (
     <>
-      <div className="auth-brand"><span className="auth-logo">V</span><strong>VITOO</strong></div>
+      <img className="auth-brand-logo" src="/vitoo-logo.jpg" alt="Vitoo" />
       <h2>Créer un compte</h2>
       <p className="muted">Quelques informations et c'est parti.</p>
       <ErrorBox error={error} />
@@ -354,7 +351,7 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
 
   const loginForm = (
     <>
-      <div className="auth-brand"><span className="auth-logo">V</span><strong>VITOO</strong></div>
+      <img className="auth-brand-logo" src="/vitoo-logo.jpg" alt="Vitoo" />
       <h2>Espace compagnie</h2>
       <p className="muted">Gérez vos trajets, chauffeurs et billets.</p>
       <ErrorBox error={error} />
@@ -371,7 +368,7 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
 
   const registerForm = (
     <>
-      <div className="auth-brand"><span className="auth-logo">V</span><strong>VITOO</strong></div>
+      <img className="auth-brand-logo" src="/vitoo-logo.jpg" alt="Vitoo" />
       <h2>Inscrire ma compagnie</h2>
       <p className="muted">Créez votre espace en quelques champs.</p>
       <ErrorBox error={error} />
@@ -454,7 +451,7 @@ export function AdminLogin() {
       active={false}
       login={
         <>
-          <div className="auth-brand"><span className="auth-logo">V</span><strong>VITOO</strong></div>
+          <img className="auth-brand-logo" src="/vitoo-logo.jpg" alt="Vitoo" />
           <h2>Administration</h2>
           <p className="muted">Espace réservé aux administrateurs Vitoo.</p>
           <ErrorBox error={error} />

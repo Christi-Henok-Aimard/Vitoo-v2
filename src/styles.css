@@ -556,6 +556,15 @@ status-pill { pointer-events: none; }
   box-shadow: var(--shadow);
   color: var(--text);
 }
+.auth-brand-logo {
+  display: block;
+  width: 190px;
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  object-fit: contain;
+}
 .auth-brand {
   display: flex;
   align-items: center;

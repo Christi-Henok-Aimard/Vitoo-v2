@@ -5,7 +5,6 @@ import {
   LogOut,
   Moon,
   Sun,
-  BusFront,
   type LucideIcon,
 } from 'lucide-react';
 import { useApp } from '../lib/context';
@@ -86,10 +85,7 @@ export function AppShell({
       <header className="card" style={{ borderRadius: 0, borderWidth: '0 0 1px 0', position: 'sticky', top: 0, zIndex: 40 }}>
         <div style={{ maxWidth: 1240, margin: '0 auto', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
           <Link to={`/${space === 'passenger' ? 'passenger' : space}`} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text)' }}>
-            <span style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BusFront size={19} />
-            </span>
-            <strong style={{ fontSize: 18, letterSpacing: '-0.03em' }}>vitoo</strong>
+            <img src="/vitoo-logo.jpg" alt="Vitoo" style={{ width: 130, height: 'auto', objectFit: 'contain', borderRadius: 6 }} />
           </Link>
           <div style={{ flex: 1 }} />
           <div className="desktop-only" style={{ display: 'none' }}>{switcher}</div>
