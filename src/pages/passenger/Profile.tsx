@@ -40,7 +40,7 @@ function ThemeSwitch({ theme, toggleTheme }: { theme: 'light' | 'dark'; toggleTh
 }
 
 export function PassengerProfilePage() {
-  const { userSession, theme, toggleTheme, lang, toggleLang, logoutUser, toast } = useApp();
+  const { userSession, theme, toggleTheme, lang, setLanguage, logoutUser, toast } = useApp();
   const navigate = useNavigate();
   const user = userSession!.user;
   const [firstName, setFirstName] = useState(user.firstName);
@@ -212,7 +212,12 @@ export function PassengerProfilePage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
               <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Globe2 size={17} /> Langue</span>
-              <button className="btn btn-sm btn-secondary" onClick={toggleLang}>{lang.toUpperCase()} · Changer</button>
+              <select className="input" value={lang} onChange={(e) => setLanguage(e.target.value as typeof lang)} aria-label="Langue">
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+                <option value="dyu">Dioula</option>
+                <option value="bci">Baoulé</option>
+              </select>
             </div>
             <div className="divider" />
             <button className="btn btn-danger btn-block" onClick={() => { logoutUser(); navigate('/passenger', { replace: true }); }}>

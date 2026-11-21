@@ -10,7 +10,7 @@ import { GridCards } from '../../components/AppShell';
 import type { DriverStats, Incident } from '../../types';
 
 export function DriverProfilePage() {
-  const { userSession, driverInfo, refreshDriverInfo, theme, toggleTheme, lang, toggleLang, logoutUser, toast } = useApp();
+  const { userSession, driverInfo, refreshDriverInfo, theme, toggleTheme, lang, setLanguage, logoutUser, toast } = useApp();
   const navigate = useNavigate();
   const token = userSession!.token;
   const stats = useAsync(() => driverApi.stats(token), [token], {} as DriverStats);
@@ -60,7 +60,12 @@ export function DriverProfilePage() {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
             <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Globe2 size={16} /> Langue</span>
-            <button className="btn btn-sm btn-secondary" onClick={toggleLang}>{lang.toUpperCase()} · Changer</button>
+            <select className="input" value={lang} onChange={(e) => setLanguage(e.target.value as typeof lang)} aria-label="Langue">
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+              <option value="dyu">Dioula</option>
+              <option value="bci">Baoulé</option>
+            </select>
           </div>
           <div className="divider" />
           <button className="btn btn-block" onClick={() => navigate('/passenger/profile')}>Retour au profil passager</button>

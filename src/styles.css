@@ -556,6 +556,31 @@ status-pill { pointer-events: none; }
   box-shadow: var(--shadow);
   color: var(--text);
 }
+.lang-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.lang-picker select {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  padding: 4px 2px;
+}
+.lang-picker option { color: #16233a; }
+
+.lang-picker-compact { height: 32px; padding: 0 4px; }
+
 .auth-brand-logo {
   display: block;
   width: 96px;

@@ -9,7 +9,7 @@ import { updateCompanySessionUser } from '../../session';
 import { Field, Notice, PageHeader } from '../../lib/ui';
 
 export function CompanyProfilePage() {
-  const { companySession, theme, toggleTheme, lang, toggleLang, logoutCompany, toast } = useApp();
+  const { companySession, theme, toggleTheme, lang, setLanguage, logoutCompany, toast } = useApp();
   const navigate = useNavigate();
   const u = companySession!.user;
   const [form, setForm] = useState({
@@ -125,7 +125,12 @@ export function CompanyProfilePage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
               <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Globe2 size={16} /> Langue</span>
-              <button className="btn btn-sm btn-secondary" onClick={toggleLang}>{lang.toUpperCase()} · Changer</button>
+              <select className="input" value={lang} onChange={(e) => setLanguage(e.target.value as typeof lang)} aria-label="Langue">
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+                <option value="dyu">Dioula</option>
+                <option value="bci">Baoulé</option>
+              </select>
             </div>
             <div className="divider" />
             <button className="btn btn-danger btn-block" onClick={() => { logoutCompany(); navigate('/company', { replace: true }); }}><LogOut size={16} /> Se déconnecter</button>

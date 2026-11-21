@@ -107,10 +107,16 @@ export function applyTheme(theme: 'light' | 'dark'): void {
   document.documentElement.classList.toggle('dark', theme === 'dark');
 }
 
-export function getLang(): 'fr' | 'en' {
-  return localStorage.getItem('vitoo_lang') === 'en' ? 'en' : 'fr';
+import type { Lang } from './i18n';
+
+const LANGS: Lang[] = ['fr', 'en', 'dyu', 'bci'];
+
+export function getLang(): Lang {
+  const saved = localStorage.getItem('vitoo_lang');
+  return LANGS.includes(saved as Lang) ? (saved as Lang) : 'fr';
 }
 
-export function setLang(lang: 'fr' | 'en'): void {
+export function setLang(lang: Lang): void {
   localStorage.setItem('vitoo_lang', lang);
+  document.documentElement.lang = lang;
 }

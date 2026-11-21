@@ -44,6 +44,12 @@ npm run dev          # http://localhost:5173
 
 La compagnie active ses moyens depuis son profil et ses trajets via des **boutons** : Espèces, Wave, Orange Money, MTN MoMo, Moov Money, Carte bancaire. Le passager ne voit que les moyens activés pour le trajet choisi. « Espèces » crée le billet immédiatement (paiement à l'embarquement) ; les autres moyens redirigent vers GeniusPay. Sans clés GeniusPay, le backend répond 503 volontairement — aucun faux billet n'est créé.
 
+## Langues
+
+L'application propose **4 langues** : français, anglais, **dioula (jula)** et **baoulé**. Le sélecteur est disponible sur l'authentification, dans l'en-tête de tous les espaces et dans le profil. Le choix est mémorisé dans `vitoo_lang`.
+
+Le site passager (recherche trajets, résultats, notifications) est traduit dans les 4 langues. Les traductions dioula/baoulé sont des versions de référence à faire relire par un locuteur natif avant une communication grand public ; les termes techniques (billet, gare, FCFA) restent volontairement inchangés, comme dans l'usage courant en Côte d'Ivoire.
+
 ## Identité visuelle
 
 Le logo Vitoo (symbole « V » cyan) est utilisé sur l'authentification, l'en-tête et le favicon. La couleur primaire de toute l'application est le cyan du logo (`#0ea5e9`, plus clair en mode sombre `#38bdf8`).

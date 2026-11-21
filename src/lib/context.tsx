@@ -18,6 +18,7 @@ import {
   type UserSession,
 } from '../session';
 import type { Driver } from '../types';
+import { translate, type Lang, type TranslationKey } from '../i18n';
 
 export interface ToastItem {
   id: number;
@@ -40,9 +41,10 @@ interface AppContextValue {
   dismissToast: (id: number) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  lang: 'fr' | 'en';
-  toggleLang: () => void;
-  tr: (fr: string, en: string) => string;
+  lang: Lang;
+  setLanguage: (lang: Lang) => void;
+  /** Traduit une clé dans la langue courante (FR / EN / Dioula / Baoulé). */
+  t: (key: TranslationKey) => string;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -56,7 +58,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [theme, setThemeState] = useState<'light' | 'dark'>(() => getTheme());
-  const [lang, setLangState] = useState<'fr' | 'en'>(() => getLang());
+  const [lang, setLangState] = useState<Lang>(() => getLang());
 
   const refresh = useCallback(() => {
     setUserState(readUserSession());
@@ -164,12 +166,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setThemeState(next);
       },
       lang,
-      toggleLang: () => {
-        const next = lang === 'fr' ? 'en' : 'fr';
+      setLanguage: (next: Lang) => {
         setLang(next);
         setLangState(next);
       },
-      tr: (fr, en) => (lang === 'en' ? en : fr),
+      t: (key: TranslationKey) => translate(lang, key),
     }),
     [userSession, companySession, ready, driverInfo, refreshDriverInfo, toasts, toast, dismissToast, theme, lang],
   );

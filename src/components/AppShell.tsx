@@ -44,7 +44,7 @@ export function AppShell({
   profileTo?: string;
   accentColor?: string;
 }) {
-  const { theme, toggleTheme, lang, toggleLang, logoutUser, logoutCompany, userSession, companySession } = useApp();
+  const { theme, toggleTheme, lang, setLanguage, logoutUser, logoutCompany, userSession, companySession } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -89,11 +89,15 @@ export function AppShell({
           </Link>
           <div style={{ flex: 1 }} />
           <div className="desktop-only" style={{ display: 'none' }}>{switcher}</div>
-          <button className="btn btn-ghost btn-icon" onClick={toggleLang} title="Langue" aria-label="Changer de langue">
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 800 }}>
-              <Globe2 size={17} /> {lang.toUpperCase()}
-            </span>
-          </button>
+          <label className="lang-picker" title="Langue / Language / Kan / An ka kan">
+            <Globe2 size={17} />
+            <select value={lang} onChange={(e) => setLanguage(e.target.value as typeof lang)} aria-label="Changer de langue">
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+              <option value="dyu">Dioula</option>
+              <option value="bci">Baoulé</option>
+            </select>
+          </label>
           <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title="Thème" aria-label="Changer de thème">
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>

@@ -4,12 +4,13 @@ import { notificationsApi, errorMessage } from '../api';
 import { usePolling } from '../lib/hooks';
 import { relativeTime } from '../lib/format';
 import { useApp } from '../lib/context';
+import { localizedNotification } from '../i18n';
 import { Empty, Spinner } from '../lib/ui';
 import { RatingModal } from './RatingModal';
 import type { Notification } from '../types';
 
 export function NotificationBell({ token, allowRating = false }: { token: string; allowRating?: boolean }) {
-  const { toast } = useApp();
+  const { toast, lang, t } = useApp();
   const [items, setItems] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -81,7 +82,7 @@ export function NotificationBell({ token, allowRating = false }: { token: string
             <strong>Notifications</strong>
             {unread > 0 && (
               <button className="btn btn-ghost btn-sm" onClick={() => void markAll()}>
-                <CheckCheck size={14} /> Tout marquer comme lu
+                <CheckCheck size={14} /> {t('markAllRead')}
               </button>
             )}
           </div>
@@ -91,7 +92,9 @@ export function NotificationBell({ token, allowRating = false }: { token: string
             ) : items.length === 0 ? (
               <div style={{ padding: 8 }}><Empty icon={Bell} title="Aucune notification" text="Vous êtes à jour !" /></div>
             ) : (
-              items.map((n) => (
+              items.map((n) => {
+                const text = localizedNotification(lang, n.type, { title: n.title, body: n.body });
+                return (
                 <button
                   key={n.id}
                   onClick={() => void markOne(n)}
@@ -109,18 +112,19 @@ export function NotificationBell({ token, allowRating = false }: { token: string
                 >
                   <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                     <span style={{ flex: 1 }}>
-                      <span style={{ display: 'block', fontWeight: 700, fontSize: 13 }}>{n.title}</span>
-                      <span style={{ display: 'block', color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>{n.body}</span>
+                      <span style={{ display: 'block', fontWeight: 700, fontSize: 13 }}>{text.title}</span>
+                      <span style={{ display: 'block', color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>{text.body}</span>
                     </span>
                     {allowRating && n.type === 'arrived' && n.tripId && (
                       <span className="badge badge-warning" style={{ flexShrink: 0 }}>
-                        <Star size={11} /> Noter
+                        <Star size={11} /> {t('rateTrip')}
                       </span>
                     )}
                   </div>
                   <span className="muted" style={{ fontSize: 11 }}>{relativeTime(n.createdAt)}</span>
                 </button>
-              ))
+                );
+              })
             )}
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Globe2, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { AuthSplit } from '../components/AuthSplit';
 import { auth, errorMessage, type AuthResult } from '../api';
 import { useApp } from '../lib/context';
@@ -75,6 +75,21 @@ function GoogleButton({ onCredential }: { onCredential: (idToken: string) => voi
 
 /* --------------------------- Mise en page ------------------------------ */
 
+function LanguageSwitch({ compact = false }: { compact?: boolean }) {
+  const { lang, setLanguage } = useApp();
+  return (
+    <label className={compact ? 'lang-picker lang-picker-compact' : 'lang-picker'} title="Langue / Language / Kan / An ka kan">
+      <Globe2 size={16} />
+      <select value={lang} onChange={(e) => setLanguage(e.target.value as typeof lang)} aria-label="Changer de langue">
+        <option value="fr">Français</option>
+        <option value="en">English</option>
+        <option value="dyu">Dioula</option>
+        <option value="bci">Baoulé</option>
+      </select>
+    </label>
+  );
+}
+
 function AuthLayout({
   title,
   subtitle,
@@ -89,7 +104,13 @@ function AuthLayout({
   return (
     <div className="auth-shell">
       <div className="auth-card">
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+        <LanguageSwitch compact />
+      </div>
+          <LanguageSwitch compact />
+        </div>
         <h2 style={{ fontSize: 22 }}>{title}</h2>
         <p className="muted" style={{ fontSize: 13, margin: '5px 0 20px' }}>{subtitle}</p>
         {children}
@@ -221,7 +242,10 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
 
   const loginForm = (
     <>
-      <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+        <LanguageSwitch compact />
+      </div>
       <h2>Connexion</h2>
       <p className="muted">Retrouvez vos billets et vos rappels de départ.</p>
       <ErrorBox error={error} />
@@ -251,7 +275,10 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
 
   const registerForm = (
     <>
-      <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+        <LanguageSwitch compact />
+      </div>
       <h2>Créer un compte</h2>
       <p className="muted">Quelques informations et c'est parti.</p>
       <ErrorBox error={error} />
@@ -351,7 +378,10 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
 
   const loginForm = (
     <>
-      <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+        <LanguageSwitch compact />
+      </div>
       <h2>Espace compagnie</h2>
       <p className="muted">Gérez vos trajets, chauffeurs et billets.</p>
       <ErrorBox error={error} />
@@ -371,7 +401,10 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
 
   const registerForm = (
     <>
-      <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+        <LanguageSwitch compact />
+      </div>
       <h2>Inscrire ma compagnie</h2>
       <p className="muted">Créez votre espace en quelques champs.</p>
       <ErrorBox error={error} />
@@ -477,7 +510,10 @@ export function SpaceForgotPassword({ space }: { space: 'company' | 'admin' }) {
       subtitle={isCompany ? 'Recevez un code sur l’e-mail de votre compagnie.' : 'Recevez un code sur votre numéro d’administrateur.'}
       footer={<>Retour <Link to={home}>à la connexion</Link></>}
     >
-      <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+        <LanguageSwitch compact />
+      </div>
       <ErrorBox error={error} />
       {devCode && (
         <div style={{ marginBottom: 12 }}>
@@ -556,7 +592,13 @@ export function AdminLogin() {
       active={false}
       login={
         <>
-          <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+        <LanguageSwitch compact />
+      </div>
+          <LanguageSwitch compact />
+        </div>
           <h2>Administration</h2>
           <p className="muted">Espace réservé aux administrateurs Vitoo.</p>
           <ErrorBox error={error} />

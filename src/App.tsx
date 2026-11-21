@@ -24,11 +24,11 @@ import { DriverIncidentsPage, DriverProfilePage } from './pages/driver/Profile';
 import { AdminDashboardPage } from './pages/admin/Admin';
 import { Toasts } from './lib/ui';
 
-const passengerNav: NavItem[] = [
-  { to: '/passenger', label: 'Rechercher', icon: Home, end: true },
-  { to: '/passenger/tickets', label: 'Mes billets', icon: Ticket },
-  { to: '/passenger/bookings', label: 'Réservations', icon: ClipboardList },
-  { to: '/passenger/profile', label: 'Mon profil', icon: UserCog },
+const passengerNav = (t: (key: 'search' | 'myTickets' | 'bookings' | 'profile') => string): NavItem[] => [
+  { to: '/passenger', label: t('search'), icon: Home, end: true },
+  { to: '/passenger/tickets', label: t('myTickets'), icon: Ticket },
+  { to: '/passenger/bookings', label: t('bookings'), icon: ClipboardList },
+  { to: '/passenger/profile', label: t('profile'), icon: UserCog },
 ];
 
 const companyNav: NavItem[] = [
@@ -53,11 +53,11 @@ const adminNav: NavItem[] = [
 ];
 
 function PassengerLayout() {
-  const { userSession } = useApp();
+  const { userSession, t } = useApp();
   return (
     <AppShell
       space="passenger"
-      nav={passengerNav}
+      nav={passengerNav(t)}
       bellToken={userSession?.token}
       bellRating
       profileTo="/passenger/profile"
