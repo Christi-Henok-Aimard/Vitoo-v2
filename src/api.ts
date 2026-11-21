@@ -98,6 +98,14 @@ export const auth = {
     request<{ message: string; code?: string }>('/auth/forgot-password', { method: 'POST', body: { phone } }),
   resetPassword: (body: { phone: string; code: string; password: string }) =>
     request<{ message: string }>('/auth/reset-password', { method: 'POST', body }),
+  forgotCompany: (email: string) =>
+    request<{ message: string; code?: string }>('/company/auth/forgot-password', { method: 'POST', body: { email } }),
+  resetCompany: (body: { email: string; code: string; password: string }) =>
+    request<{ message: string }>('/company/auth/reset-password', { method: 'POST', body }),
+  forgotAdmin: (phone: string) =>
+    request<{ message: string; code?: string }>('/auth/admin/forgot-password', { method: 'POST', body: { phone } }),
+  resetAdmin: (body: { phone: string; code: string; password: string }) =>
+    request<{ message: string }>('/auth/admin/reset-password', { method: 'POST', body }),
   me: (token: string) => request<AuthResult>('/auth/me', { token }),
   patchMe: (
     token: string,

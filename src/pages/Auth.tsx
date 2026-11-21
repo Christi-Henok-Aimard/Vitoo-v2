@@ -363,6 +363,9 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
         </button>
       </form>
       <div className="auth-spaces">{spaceLinks}</div>
+      <div style={{ textAlign: 'center', fontSize: 13, marginTop: 6 }}>
+        <Link to="/company/forgot">Mot de passe oublié ?</Link>
+      </div>
     </>
   );
 
@@ -416,6 +419,108 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
   );
 }
 
+/* ------------------ Mot de passe oublié : compagnie / admin ----------------- */
+
+export function SpaceForgotPassword({ space }: { space: 'company' | 'admin' }) {
+  const navigate = useNavigate();
+  const { toast } = useApp();
+  const [step, setStep] = useState<'ask' | 'code'>('ask');
+  const [value, setValue] = useState('');
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [devCode, setDevCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const isCompany = space === 'company';
+  const home = isCompany ? '/company/login' : '/admin';
+
+  const ask = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const res = isCompany ? await auth.forgotCompany(value.trim()) : await auth.forgotAdmin(value.trim());
+      if (res.code) setDevCode(res.code);
+      toast(res.message, 'success');
+      setStep('code');
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reset = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const body = { code: code.trim(), password };
+      if (isCompany) await auth.resetCompany({ email: value.trim(), ...body });
+      else await auth.resetAdmin({ phone: value.trim(), ...body });
+      toast('Mot de passe réinitialisé. Connectez-vous.', 'success');
+      navigate(home, { replace: true });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <AuthLayout
+      title="Mot de passe oublié"
+      subtitle={isCompany ? 'Recevez un code sur l’e-mail de votre compagnie.' : 'Recevez un code sur votre numéro d’administrateur.'}
+      footer={<>Retour <Link to={home}>à la connexion</Link></>}
+    >
+      <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+      <ErrorBox error={error} />
+      {devCode && (
+        <div style={{ marginBottom: 12 }}>
+          <Notice tone="info">Votre code : <strong style={{ fontFamily: 'monospace' }}>{devCode}</strong></Notice>
+        </div>
+      )}
+      {step === 'ask' ? (
+        <form onSubmit={(e) => void ask(e)}>
+          <Field label={isCompany ? 'E-mail de la compagnie' : 'Numéro de téléphone'} required>
+            <input
+              className="input"
+              type={isCompany ? 'email' : 'tel'}
+              inputMode={isCompany ? 'email' : 'tel'}
+              placeholder={isCompany ? 'compagnie@exemple.ci' : '+225 07 00 00 00 00'}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              required
+            />
+          </Field>
+          <button className="btn btn-primary btn-block" disabled={busy} type="submit">
+            {busy ? 'Envoi…' : 'Recevoir le code'} {!busy && <ArrowRight size={16} />}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={(e) => void reset(e)}>
+          <Field label="Code reçu" required>
+            <input className="input" inputMode="numeric" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} required />
+          </Field>
+          <Field label="Nouveau mot de passe" required>
+            <input className="input" type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </Field>
+          <button className="btn btn-primary btn-block" disabled={busy} type="submit">
+            {busy ? 'Patientez…' : 'Réinitialiser'} {!busy && <ArrowRight size={16} />}
+          </button>
+          <div style={{ marginTop: 10, textAlign: 'center', fontSize: 13 }}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setStep('ask'); setDevCode(''); setError(''); }}>Renvoyer un code</button>
+          </div>
+        </form>
+      )}
+    </AuthLayout>
+  );
+}
+
 /* ---------------------------------- Admin ---------------------------------- */
 
 export function AdminLogin() {
@@ -464,6 +569,9 @@ export function AdminLogin() {
             <button className="btn btn-primary btn-block" disabled={busy} type="submit">{busy ? 'Connexion…' : 'Se connecter'}</button>
           </form>
           <div className="auth-spaces">{spaceLinks}</div>
+          <div style={{ textAlign: 'center', fontSize: 13, marginTop: 6 }}>
+            <Link to="/admin/forgot">Mot de passe oublié ?</Link>
+          </div>
         </>
       }
       register={<></>}

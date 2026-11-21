@@ -47,6 +47,8 @@ interface ResetEntry {
 
 /** Codes éphémères en mémoire : jamais une source de vérité métier. */
 const resetCodes = new Map<string, ResetEntry>();
+const companyResetCodes = new Map<string, ResetEntry>();
+const adminResetCodes = new Map<string, ResetEntry>();
 const makeCode = (): string => String(Math.floor(100000 + Math.random() * 900000));
 
 type OtpChannel = { send: (code: string) => Promise<void> };
@@ -113,6 +115,75 @@ const otpChannels = (user: User): OtpChannel[] => {
     });
   }
   return channels;
+};
+
+/**
+ * OTP générique pour les espaces compagnie et admin.
+ * Clé = email (compagnie) ou téléphone normalisé (admin).
+ */
+const issueOtp = async (
+  response: Response,
+  store: Map<string, ResetEntry>,
+  key: string,
+  user: User | null,
+): Promise<Response> => {
+  if (!user) return fail(response, 'Aucun compte associé à cette adresse ou ce numéro.', 404);
+  const code = makeCode();
+  store.set(key, { code, expiresAt: Date.now() + OTP_TTL, attempts: 0 });
+  const channels = otpChannels(user);
+  if (process.env.NODE_ENV === 'production' && channels.length === 0) {
+    store.delete(key);
+    return fail(response, 'Aucun service SMS ou e-mail configuré : envoi du code impossible.', 503);
+  }
+  let delivered = false;
+  if (channels.length) {
+    const results = await Promise.allSettled(channels.map((channel) => channel.send(code)));
+    delivered = results.some((result) => result.status === 'fulfilled');
+    if (!delivered && process.env.NODE_ENV === 'production') {
+      store.delete(key);
+      return fail(response, "Envoi du code impossible : réessayez plus tard.", 502);
+    }
+  }
+  const body: { message: string; code?: string } = {
+    message: delivered ? 'Code envoyé par SMS/e-mail.' : 'Code de réinitialisation généré.',
+  };
+  if (process.env.NODE_ENV !== 'production') body.code = code;
+  return response.json(body);
+};
+
+const consumeOtp = async (
+  response: Response,
+  store: Map<string, ResetEntry>,
+  body: { key?: string; code?: string; password?: string },
+  findUser: () => Promise<User | null>,
+): Promise<Response> => {
+  const key = str(body.key);
+  if (!key || !str(body.code) || typeof body.password !== 'string') {
+    return fail(response, 'key, code et password sont requis.');
+  }
+  try {
+    validatePassword(body.password);
+  } catch (error) {
+    return fail(response, error instanceof HttpError ? error.message : 'Mot de passe invalide.');
+  }
+  const entry = store.get(key);
+  if (!entry || entry.expiresAt < Date.now()) {
+    store.delete(key);
+    return fail(response, 'Code invalide ou expiré.');
+  }
+  if (entry.attempts >= OTP_MAX_ATTEMPTS) {
+    store.delete(key);
+    return fail(response, 'Trop de tentatives : demandez un nouveau code.', 429);
+  }
+  if (entry.code !== str(body.code)) {
+    entry.attempts += 1;
+    return fail(response, 'Code invalide.');
+  }
+  const user = await findUser();
+  if (!user) return fail(response, 'Compte introuvable.', 404);
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(body.password) } });
+  store.delete(key);
+  return response.json({ message: 'Mot de passe réinitialisé.' });
 };
 
 // --- Passager ------------------------------------------------------------
@@ -317,6 +388,50 @@ passengerAuthRouter.patch('/me', requireAuth, async (request, response) => {
   }
   const user = await prisma.user.update({ where: { id: request.user!.id }, data });
   return response.json(await authPayload(user));
+});
+
+// --- Mot de passe oublié : compagnie (e-mail) et admin (téléphone) --------
+
+companyAuthRouter.post('/forgot-password', async (request, response) => {
+  const email = str(request.body?.email).toLowerCase();
+  if (!email) return fail(response, 'Adresse e-mail requise.');
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || user.role !== 'company') return fail(response, 'Aucune compagnie associée à cette adresse.', 404);
+  return issueOtp(response, companyResetCodes, email, user);
+});
+
+companyAuthRouter.post('/reset-password', async (request, response) => {
+  const body = request.body ?? {};
+  return consumeOtp(
+    response,
+    companyResetCodes,
+    { key: str(body.email).toLowerCase(), code: body.code, password: body.password },
+    async () => {
+      const user = await prisma.user.findUnique({ where: { email: str(body.email).toLowerCase() } });
+      return user?.role === 'company' ? user : null;
+    },
+  );
+});
+
+passengerAuthRouter.post('/admin/forgot-password', async (request, response) => {
+  const phone = normalizePhone(request.body?.phone);
+  if (!phone) return fail(response, 'Numéro ivoirien valide requis.');
+  const user = await findUserByPhone(phone);
+  return issueOtp(response, adminResetCodes, phone, user?.role === 'admin' ? user : null);
+});
+
+passengerAuthRouter.post('/admin/reset-password', async (request, response) => {
+  const body = request.body ?? {};
+  const phone = normalizePhone(body.phone);
+  return consumeOtp(
+    response,
+    adminResetCodes,
+    { key: phone, code: body.code, password: body.password },
+    async () => {
+      const user = await findUserByPhone(phone);
+      return user?.role === 'admin' ? user : null;
+    },
+  );
 });
 
 // --- Compagnie -----------------------------------------------------------

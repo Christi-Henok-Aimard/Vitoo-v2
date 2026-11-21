@@ -4,7 +4,7 @@ import { Guard } from './components/Guard';
 import { AppShell, type NavItem } from './components/AppShell';
 import { useApp } from './lib/context';
 import { Loading } from './lib/ui';
-import { AdminLogin, CompanyAuth, PassengerAuth } from './pages/Auth';
+import { AdminLogin, CompanyAuth, PassengerAuth, SpaceForgotPassword } from './pages/Auth';
 import { SearchPage } from './pages/passenger/Search';
 import { TripDetailPage } from './pages/passenger/TripDetail';
 import { BookingPage } from './pages/passenger/Booking';
@@ -131,6 +131,7 @@ export default function App() {
         <Route path="/company" element={<CompanyEntry />} />
         <Route path="/company/login" element={<CompanyAuth mode="login" />} />
         <Route path="/company/register" element={<CompanyAuth mode="register" />} />
+        <Route path="/company/forgot" element={<SpaceForgotPassword space="company" />} />
         <Route path="/company" element={<Guard space="company"><CompanyLayout /></Guard>}>
           <Route path="overview" element={<CompanyOverviewPage />} />
           <Route path="trips" element={<CompanyTripsPage />} />
@@ -151,6 +152,7 @@ export default function App() {
         </Route>
 
         {/* Administration */}
+        <Route path="/admin/forgot" element={<SpaceForgotPassword space="admin" />} />
         <Route path="/admin" element={<AdminEntry />} />
         <Route path="/admin" element={<Guard space="admin"><AdminLayout /></Guard>}>
           <Route path="dashboard" element={<AdminDashboardPage />} />
