@@ -12,7 +12,7 @@ import type { AdminStats, User } from '../../types';
 type Action = { type: 'ban' | 'delete'; user: User } | null;
 
 export function AdminDashboardPage() {
-  const { userSession, toast } = useApp();
+  const { userSession, toast, t } = useApp();
   const token = userSession!.token;
   const { id } = useParams();
   const [role, setRole] = useState('');
@@ -41,13 +41,13 @@ export function AdminDashboardPage() {
     try {
       if (action.type === 'ban') {
         await adminApi.patchUser(token, action.user.id, { role: 'passenger' });
-        toast('Utilisateur rétrogradé en passager.', 'success');
+        toast(t('passenger'), 'success');
       } else {
         const result = await adminApi.deleteUser(token, action.user.id);
         toast(
           result.messageSent
-            ? 'Compte supprimé. Un message a été envoyé à la personne.'
-            : 'Compte et données supprimés. Aucun e-mail/SMS configuré : aucun message n’a pu être envoyé.',
+            ? `${t('delete')} · ${t('success')}`
+            : `${t('delete')} · ${t('noData')}`,
           result.messageSent ? 'success' : 'info',
         );
       }
@@ -62,35 +62,35 @@ export function AdminDashboardPage() {
 
   return (
     <>
-      <PageHeader title="Administration" subtitle="Vue d'ensemble et gestion des utilisateurs." />
+      <PageHeader title={t('adminSpace')} subtitle={`${t('overview')} · ${t('users')}`} />
       <GridCards>
-        <StatCard icon={Users} label="Utilisateurs" value={stats.data.users ?? 0} tone="primary" />
-        <StatCard icon={Building2} label="Compagnies" value={stats.data.companies ?? 0} tone="success" />
-        <StatCard icon={UserCog} label="Chauffeurs" value={stats.data.drivers ?? 0} tone="warning" />
-        <StatCard icon={ShieldBan} label="Trajets" value={stats.data.trips ?? 0} tone="danger" />
+        <StatCard icon={Users} label={t('totalUsers')} value={stats.data.users ?? 0} tone="primary" />
+        <StatCard icon={Building2} label={t('totalCompanies')} value={stats.data.companies ?? 0} tone="success" />
+        <StatCard icon={UserCog} label={t('drivers')} value={stats.data.drivers ?? 0} tone="warning" />
+        <StatCard icon={ShieldBan} label={t('totalTrips')} value={stats.data.trips ?? 0} tone="danger" />
       </GridCards>
 
       <div className="card card-pad" style={{ marginTop: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-          <strong>Utilisateurs</strong>
+          <strong>{t('users')}</strong>
           <div style={{ display: 'flex', gap: 8 }}>
             <select className="select" style={{ width: 170 }} value={role} onChange={(e) => { setRole(e.target.value); setPage(1); }}>
-              <option value="">Tous les rôles</option>
-              <option value="passenger">Passagers</option>
-              <option value="company">Compagnies</option>
-              <option value="driver">Chauffeurs</option>
-              <option value="admin">Administrateurs</option>
+              <option value="">{t('all')}</option>
+              <option value="passenger">{t('passenger')}</option>
+              <option value="company">{t('totalCompanies')}</option>
+              <option value="driver">{t('drivers')}</option>
+              <option value="admin">{t('adminSpace')}</option>
             </select>
           </div>
         </div>
 
         {users.loading ? <Loading /> : users.error ? <ErrorView message={users.error} retry={() => void users.reload()} /> : users.data.users.length === 0 ? (
-          <Empty icon={Users} title="Aucun utilisateur" />
+          <Empty icon={Users} title={t('noData')} />
         ) : (
           <>
             <div className="table-wrap">
               <table className="table">
-                <thead><tr><th>Nom</th><th>Téléphone</th><th>E-mail</th><th>Rôle</th><th>Inscrit le</th><th></th></tr></thead>
+                <thead><tr><th>{t('name')}</th><th>{t('phone')}</th><th>{t('email')}</th><th>{t('status')}</th><th>{t('date')}</th><th></th></tr></thead>
                 <tbody>
                   {users.data.users.map((u) => (
                     <tr key={u.id}>
@@ -101,9 +101,9 @@ export function AdminDashboardPage() {
                       <td className="muted">{formatDate(u.createdAt)}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 4 }}>
-                          <button className="btn btn-ghost btn-icon btn-sm" title="Détail" onClick={() => void openDetail(u.id)}><Eye size={15} /></button>
-                          {u.role !== 'passenger' && <button className="btn btn-ghost btn-icon btn-sm" title="Bannir" onClick={() => setAction({ type: 'ban', user: u })}><ShieldBan size={15} /></button>}
-                          <button className="btn btn-ghost btn-icon btn-sm" title="Supprimer" onClick={() => setAction({ type: 'delete', user: u })}><Trash2 size={15} /></button>
+                          <button className="btn btn-ghost btn-icon btn-sm" title={t('details')} onClick={() => void openDetail(u.id)}><Eye size={15} /></button>
+                          {u.role !== 'passenger' && <button className="btn btn-ghost btn-icon btn-sm" title={t('ban')} onClick={() => setAction({ type: 'ban', user: u })}><ShieldBan size={15} /></button>}
+                          <button className="btn btn-ghost btn-icon btn-sm" title={t('delete')} onClick={() => setAction({ type: 'delete', user: u })}><Trash2 size={15} /></button>
                         </div>
                       </td>
                     </tr>
@@ -112,10 +112,10 @@ export function AdminDashboardPage() {
               </table>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-              <span className="muted" style={{ fontSize: 12 }}>{users.data.total ? `${users.data.total} utilisateurs` : `Page ${page}`}</span>
+              <span className="muted" style={{ fontSize: 12 }}>{users.data.total ? `${users.data.total} ${t('users')}` : `${t('number')} ${page}`}</span>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button className="btn btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Précédent</button>
-                <button className="btn btn-sm" disabled={users.data.users.length < 20} onClick={() => setPage((p) => p + 1)}>Suivant</button>
+                <button className="btn btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>{t('back')}</button>
+                <button className="btn btn-sm" disabled={users.data.users.length < 20} onClick={() => setPage((p) => p + 1)}>{t('seeAll')}</button>
               </div>
             </div>
           </>
@@ -125,23 +125,23 @@ export function AdminDashboardPage() {
       {detail && (
         <Modal
           title={`${detail.firstName} ${detail.lastName}`}
-          subtitle={`Rôle : ${detail.role}`}
+          subtitle={`${t('status')} : ${detail.role}`}
           onClose={() => setDetail(null)}
           footer={
             <>
-              {detail.role !== 'passenger' && <button className="btn" onClick={() => setAction({ type: 'ban', user: detail })}><ShieldBan size={14} /> Bannir</button>}
-              <button className="btn btn-danger" onClick={() => setAction({ type: 'delete', user: detail })}><Trash2 size={14} /> Supprimer</button>
+              {detail.role !== 'passenger' && <button className="btn" onClick={() => setAction({ type: 'ban', user: detail })}><ShieldBan size={14} /> {t('ban')}</button>}
+              <button className="btn btn-danger" onClick={() => setAction({ type: 'delete', user: detail })}><Trash2 size={14} /> {t('delete')}</button>
             </>
           }
         >
           <div className="table-wrap">
             <table className="table">
               <tbody>
-                <tr><td>Téléphone</td><td style={{ fontWeight: 700, textAlign: 'right' }}>{detail.phone}</td></tr>
-                <tr><td>E-mail</td><td style={{ fontWeight: 700, textAlign: 'right' }}>{detail.email || '—'}</td></tr>
-                <tr><td>Ville</td><td style={{ fontWeight: 700, textAlign: 'right' }}>{detail.city || '—'}</td></tr>
-                <tr><td>Compagnie</td><td style={{ fontWeight: 700, textAlign: 'right' }}>{detail.companyName || '—'}</td></tr>
-                <tr><td>Inscrit le</td><td style={{ fontWeight: 700, textAlign: 'right' }}>{formatDate(detail.createdAt, true)}</td></tr>
+                <tr><td>{t('phone')}</td><td style={{ fontWeight: 700, textAlign: 'right' }}>{detail.phone}</td></tr>
+                <tr><td>{t('email')}</td><td style={{ fontWeight: 700, textAlign: 'right' }}>{detail.email || '—'}</td></tr>
+                <tr><td>{t('city')}</td><td style={{ fontWeight: 700, textAlign: 'right' }}>{detail.city || '—'}</td></tr>
+                <tr><td>{t('company')}</td><td style={{ fontWeight: 700, textAlign: 'right' }}>{detail.companyName || '—'}</td></tr>
+                <tr><td>{t('date')}</td><td style={{ fontWeight: 700, textAlign: 'right' }}>{formatDate(detail.createdAt, true)}</td></tr>
               </tbody>
             </table>
           </div>
@@ -150,11 +150,11 @@ export function AdminDashboardPage() {
 
       {action && (
         <ConfirmModal
-          title={action.type === 'ban' ? 'Bannir cet utilisateur ?' : 'Supprimer cet utilisateur ?'}
+          title={action.type === 'ban' ? `${t('ban')} ?` : `${t('delete')} ?`}
           message={action.type === 'ban'
-            ? `${action.user.firstName} ${action.user.lastName} sera rétrogradé au rôle passager.`
-            : `${action.user.firstName} ${action.user.lastName} sera définitivement supprimé, ainsi que ses réservations, billets, notifications et (si c'est une compagnie) ses trajets et véhicules. Un message sera envoyé si un e-mail ou un SMS est configuré.`}
-          confirmLabel={action.type === 'ban' ? 'Bannir' : 'Supprimer'}
+            ? `${action.user.firstName} ${action.user.lastName} · ${t('passenger')}`
+            : t('deleteConfirm')}
+          confirmLabel={action.type === 'ban' ? t('ban') : t('delete')}
           danger
           onClose={() => setAction(null)}
           onConfirm={applyAction}

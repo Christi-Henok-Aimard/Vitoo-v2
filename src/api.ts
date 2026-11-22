@@ -1,5 +1,6 @@
 // Toutes les requêtes réseau — conforme au CONTRAT_API.md (section 4)
 import { clearSession, SESSION_EVENT, type Space } from './session';
+import { localizeError } from './apiErrors';
 import type {
   AdminStats,
   Booking,
@@ -296,9 +297,10 @@ export const adminApi = {
 export const healthApi = () => request<{ status: string; service: string }>('/health');
 
 export function errorMessage(err: unknown): string {
-  if (err instanceof ApiError) return err.message;
-  if (err instanceof Error) return err.message;
-  return 'Une erreur est survenue.';
+  const message = err instanceof Error ? err.message : 'Une erreur est survenue.';
+  const saved = localStorage.getItem('vitoo_lang');
+  const lang = saved === 'en' || saved === 'dyu' || saved === 'bci' ? saved : 'fr';
+  return localizeError(message, lang);
 }
 
 export function parseList(value: unknown): string[] {

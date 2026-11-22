@@ -72,14 +72,14 @@ export function NotificationBell({ token, allowRating = false }: { token: string
 
   return (
     <div className="bell" ref={wrapRef}>
-      <button className="btn btn-ghost btn-icon" onClick={() => setOpen((v) => !v)} aria-label="Notifications">
+      <button className="btn btn-ghost btn-icon" onClick={() => setOpen((v) => !v)} aria-label={t('notifications')}>
         <Bell size={19} />
         {unread > 0 && <span className="bell-count">{unread > 99 ? '99+' : unread}</span>}
       </button>
       {open && (
         <div className="dropdown">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
-            <strong>Notifications</strong>
+            <strong>{t('notifications')}</strong>
             {unread > 0 && (
               <button className="btn btn-ghost btn-sm" onClick={() => void markAll()}>
                 <CheckCheck size={14} /> {t('markAllRead')}
@@ -90,7 +90,7 @@ export function NotificationBell({ token, allowRating = false }: { token: string
             {loading ? (
               <div style={{ padding: 20, display: 'flex', justifyContent: 'center' }}><Spinner /></div>
             ) : items.length === 0 ? (
-              <div style={{ padding: 8 }}><Empty icon={Bell} title="Aucune notification" text="Vous êtes à jour !" /></div>
+              <div style={{ padding: 8 }}><Empty icon={Bell} title={t('noNotifications')} text={t('allGood')} /></div>
             ) : (
               items.map((n) => {
                 const text = localizedNotification(lang, n.type, { title: n.title, body: n.body });

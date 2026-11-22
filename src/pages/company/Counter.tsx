@@ -9,7 +9,7 @@ import { TicketCard } from '../../components/TicketCard';
 import type { Ticket, Trip } from '../../types';
 
 export function CompanyCounterPage() {
-  const { companySession, toast } = useApp();
+  const { companySession, toast, t } = useApp();
   const token = companySession!.token;
   const trips = useAsync(() => companyApi.trips(token), [token], { trips: [] as Trip[] });
   const tickets = useAsync(() => companyApi.tickets(token), [token], { tickets: [] as Ticket[] });
@@ -39,7 +39,7 @@ export function CompanyCounterPage() {
         seatNumber: seatNumber.trim() || undefined,
         amount: amount ? Number(amount) : undefined,
       });
-      toast('Billet vendu au guichet.', 'success');
+      toast(t('sellTicket'), 'success');
       setSold(res.ticket);
       setPassengerName('');
       setPassengerPhone('');
@@ -55,53 +55,53 @@ export function CompanyCounterPage() {
 
   return (
     <>
-      <PageHeader title="Vente au guichet" subtitle="Émettez un billet comptoir et imprimez-le immédiatement." />
+      <PageHeader title={t('counter')} subtitle={t('sellTicket')} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, alignItems: 'start' }}>
         <div className="card card-pad">
-          <strong style={{ fontSize: 16 }}>Nouvelle vente</strong>
+          <strong style={{ fontSize: 16 }}>{t('sellTicket')}</strong>
           <div className="divider" />
           {error && <div style={{ marginBottom: 12 }}><Notice tone="error">{error}</Notice></div>}
           {trips.loading ? <Loading /> : trips.data.trips.length === 0 ? (
-            <Empty icon={TicketIcon} title="Aucun trajet disponible" text="Créez d'abord un trajet." />
+            <Empty icon={TicketIcon} title={t('noTripsAvailable')} text={t('newTrip')} />
           ) : (
             <form onSubmit={(e) => void submit(e)}>
-              <Field label="Trajet" required>
+              <Field label={t('trips')} required>
                 <select className="select" value={tripId} onChange={(e) => { setTripId(e.target.value); const t = trips.data.trips.find((x) => x.id === e.target.value); if (t) setAmount(String(t.price)); }} required>
-                  <option value="">Choisir un trajet…</option>
-                  {trips.data.trips.map((t) => <option key={t.id} value={t.id}>{t.depart} → {t.arrivee} · {formatDate(t.date)} {t.time}</option>)}
+                  <option value="">{t('selectTrip')}</option>
+                  {trips.data.trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.depart} → {trip.arrivee} · {formatDate(trip.date)} {trip.time}</option>)}
                 </select>
               </Field>
-              <Field label="Nom du passager" required><input className="input" value={passengerName} onChange={(e) => setPassengerName(e.target.value)} required /></Field>
-              <Field label="Téléphone" required><input className="input" inputMode="tel" value={passengerPhone} onChange={(e) => setPassengerPhone(e.target.value)} required /></Field>
+              <Field label={t('passenger')} required><input className="input" value={passengerName} onChange={(e) => setPassengerName(e.target.value)} required /></Field>
+              <Field label={t('phone')} required><input className="input" inputMode="tel" value={passengerPhone} onChange={(e) => setPassengerPhone(e.target.value)} required /></Field>
               <div className="field-row">
-                <Field label="Numéro de place"><input className="input" value={seatNumber} onChange={(e) => setSeatNumber(e.target.value)} placeholder="A12" /></Field>
-                <Field label="Montant (FCFA)"><input className="input" type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
+                <Field label={t('seats')}><input className="input" value={seatNumber} onChange={(e) => setSeatNumber(e.target.value)} placeholder="A12" /></Field>
+                <Field label={`${t('amount')} (FCFA)`}><input className="input" type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
               </div>
-              {selectedTrip && <div className="notice notice-info" style={{ marginBottom: 12 }}>Places disponibles : <strong>{selectedTrip.availableSeats}</strong></div>}
+              {selectedTrip && <div className="notice notice-info" style={{ marginBottom: 12 }}>{t('seats')} {t('available')} : <strong>{selectedTrip.availableSeats}</strong></div>}
               <button className="btn btn-primary btn-block" type="submit" disabled={busy || !tripId}>
-                {busy ? 'Émission…' : <><QrCode size={16} /> Émettre le billet</>}
+                {busy ? t('loading') : <><QrCode size={16} /> {t('sellTicket')}</>}
               </button>
             </form>
           )}
         </div>
 
         <div className="card card-pad">
-          <strong style={{ fontSize: 16 }}>Historique des ventes</strong>
+          <strong style={{ fontSize: 16 }}>{t('recentSales')}</strong>
           <div className="divider" />
           {tickets.loading ? <Loading /> : tickets.error ? <ErrorView message={tickets.error} retry={() => void tickets.reload()} /> : tickets.data.tickets.length === 0 ? (
-            <div className="muted" style={{ fontSize: 13 }}>Aucune vente enregistrée.</div>
+            <div className="muted" style={{ fontSize: 13 }}>{t('noData')}</div>
           ) : (
             <div className="table-wrap" style={{ maxHeight: 480, overflowY: 'auto' }}>
               <table className="table">
-                <thead><tr><th>Code</th><th>Passager</th><th>Montant</th><th>Statut</th><th></th></tr></thead>
+                <thead><tr><th>{t('code')}</th><th>{t('passenger')}</th><th>{t('amount')}</th><th>{t('status')}</th><th></th></tr></thead>
                 <tbody>
-                  {tickets.data.tickets.map((t) => (
-                    <tr key={t.id}>
-                      <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{t.code}</td>
-                      <td>{t.passengerName || '—'}</td>
-                      <td>{formatMoney(t.amount)}</td>
-                      <td><span className="badge">{t.status}</span></td>
-                      <td><button className="btn btn-ghost btn-icon btn-sm" title="Voir le billet" onClick={() => setView(t)}><Printer size={15} /></button></td>
+                  {tickets.data.tickets.map((ticket) => (
+                    <tr key={ticket.id}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{ticket.code}</td>
+                      <td>{ticket.passengerName || '—'}</td>
+                      <td>{formatMoney(ticket.amount)}</td>
+                      <td><span className="badge">{ticket.status}</span></td>
+                      <td><button className="btn btn-ghost btn-icon btn-sm" title={t('details')} onClick={() => setView(ticket)}><Printer size={15} /></button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -114,8 +114,8 @@ export function CompanyCounterPage() {
       {(sold || view) && (
         <div style={{ marginTop: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <h2 style={{ fontSize: 17 }}>{sold ? 'Billet émis' : 'Détail du billet'}</h2>
-            <button className="btn btn-sm" onClick={() => { setSold(null); setView(null); }}>Fermer</button>
+            <h2 style={{ fontSize: 17 }}>{sold ? t('ticket') : t('tripDetail')}</h2>
+            <button className="btn btn-sm" onClick={() => { setSold(null); setView(null); }}>{t('close')}</button>
           </div>
           <TicketCard ticket={(sold || view)!} trip={trips.data.trips.find((t) => t.id === (sold || view)!.tripId)} />
         </div>

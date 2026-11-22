@@ -10,7 +10,7 @@ import type { Driver, Vehicle } from '../../types';
 type Target = { kind: 'driver'; item?: Driver } | { kind: 'vehicle'; item?: Vehicle };
 
 export function CompanyTeamPage() {
-  const { companySession, toast } = useApp();
+  const { companySession, toast, t } = useApp();
   const token = companySession!.token;
   const drivers = useAsync(() => companyApi.drivers(token), [token], { drivers: [] as Driver[] });
   const vehicles = useAsync(() => companyApi.vehicles(token), [token], { vehicles: [] as Vehicle[] });
@@ -78,7 +78,7 @@ export function CompanyTeamPage() {
           if (res.user) setFoundPassenger(res.user);
           else {
             setFoundPassenger(null);
-            setSearchError("Aucun compte passager avec ce numéro. Invitez la personne à s'inscrire d'abord.");
+            setSearchError(`${t('noPassengerFound')} ${t('inviteToRegister')}`);
           }
         })
         .catch((err: unknown) => {
@@ -95,7 +95,7 @@ export function CompanyTeamPage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [searchPhone, token]);
+  }, [searchPhone, token, t]);
 
   const addDriver = async () => {
     if (!foundPassenger) return;
@@ -106,7 +106,7 @@ export function CompanyTeamPage() {
         phone: foundPassenger.phone,
         licenseNumber: licenseNumber.trim() || undefined,
       });
-      toast('Chauffeur ajouté à votre équipe.', 'success');
+      toast(t('addDriver'), 'success');
       setTarget(null);
       await drivers.reload();
     } catch (err) {
@@ -127,7 +127,7 @@ export function CompanyTeamPage() {
           licenseNumber: form.licenseNumber.trim() || undefined,
           status: form.status,
         });
-        toast('Chauffeur mis à jour.', 'success');
+        toast(t('edit'), 'success');
         await drivers.reload();
       } else {
         const body = {
@@ -139,7 +139,7 @@ export function CompanyTeamPage() {
         };
         if (!target.item) await companyApi.createVehicle(token, body);
         else await companyApi.updateVehicle(token, target.item.id, body);
-        toast('Véhicule enregistré.', 'success');
+        toast(t('save'), 'success');
         await vehicles.reload();
       }
       setTarget(null);
@@ -155,7 +155,7 @@ export function CompanyTeamPage() {
     try {
       if (deleting.kind === 'driver') await companyApi.deleteDriver(token, deleting.item!.id);
       else await companyApi.deleteVehicle(token, deleting.item!.id);
-      toast('Élément supprimé.', 'success');
+      toast(t('delete'), 'success');
       setDeleting(null);
       if (deleting.kind === 'driver') await drivers.reload();
       else await vehicles.reload();
@@ -166,24 +166,24 @@ export function CompanyTeamPage() {
 
   return (
     <>
-      <PageHeader title="Chauffeurs & véhicules" subtitle="Gérez votre équipe et votre flotte." />
+      <PageHeader title={`${t('drivers')} & ${t('vehiclesCount')}`} subtitle={t('manageDrivers')} />
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-        <button className={`btn btn-sm ${tab === 'drivers' ? 'btn-secondary' : ''}`} onClick={() => setTab('drivers')}><UserCog size={14} /> Chauffeurs ({drivers.data.drivers.length})</button>
-        <button className={`btn btn-sm ${tab === 'vehicles' ? 'btn-secondary' : ''}`} onClick={() => setTab('vehicles')}><CarFront size={14} /> Véhicules ({vehicles.data.vehicles.length})</button>
+        <button className={`btn btn-sm ${tab === 'drivers' ? 'btn-secondary' : ''}`} onClick={() => setTab('drivers')}><UserCog size={14} /> {t('drivers')} ({drivers.data.drivers.length})</button>
+        <button className={`btn btn-sm ${tab === 'vehicles' ? 'btn-secondary' : ''}`} onClick={() => setTab('vehicles')}><CarFront size={14} /> {t('vehiclesCount')} ({vehicles.data.vehicles.length})</button>
       </div>
 
       {tab === 'drivers' ? (
         <div className="card card-pad">
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-            <strong>Mes chauffeurs</strong>
-            <button className="btn btn-primary btn-sm" onClick={() => openForm({ kind: 'driver' })}><Plus size={14} /> Ajouter un chauffeur</button>
+            <strong>{t('drivers')}</strong>
+            <button className="btn btn-primary btn-sm" onClick={() => openForm({ kind: 'driver' })}><Plus size={14} /> {t('addDriver')}</button>
           </div>
           {drivers.loading ? <ListSkeleton /> : drivers.error ? <ErrorView message={drivers.error} retry={() => void drivers.reload()} /> : drivers.data.drivers.length === 0 ? (
-            <Empty icon={UserCog} title="Aucun chauffeur" text="Cherchez un passager existant pour le promouvoir chauffeur." />
+            <Empty icon={UserCog} title={t('noData')} text={`${t('searchPassenger')} · ${t('addAsDriver')}`} />
           ) : (
             <div className="table-wrap">
               <table className="table">
-                <thead><tr><th>Nom</th><th>Téléphone</th><th>Permis</th><th>Statut</th><th></th></tr></thead>
+                <thead><tr><th>{t('name')}</th><th>{t('phone')}</th><th>{t('license')}</th><th>{t('status')}</th><th></th></tr></thead>
                 <tbody>
                   {drivers.data.drivers.map((d) => (
                     <tr key={d.id}>
@@ -207,22 +207,22 @@ export function CompanyTeamPage() {
       ) : (
         <div className="card card-pad">
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-            <strong>Mes véhicules</strong>
-            <button className="btn btn-primary btn-sm" onClick={() => openForm({ kind: 'vehicle' })}><Plus size={14} /> Ajouter</button>
+            <strong>{t('vehiclesCount')}</strong>
+            <button className="btn btn-primary btn-sm" onClick={() => openForm({ kind: 'vehicle' })}><Plus size={14} /> {t('add')}</button>
           </div>
           {vehicles.loading ? <ListSkeleton /> : vehicles.error ? <ErrorView message={vehicles.error} retry={() => void vehicles.reload()} /> : vehicles.data.vehicles.length === 0 ? (
-            <Empty icon={CarFront} title="Aucun véhicule" text="Ajoutez un véhicule à votre flotte." />
+            <Empty icon={CarFront} title={t('noData')} text={t('addVehicle')} />
           ) : (
             <div className="table-wrap">
               <table className="table">
-                <thead><tr><th>Plaque</th><th>Marque / Modèle</th><th>Capacité</th><th>Actif</th><th></th></tr></thead>
+                <thead><tr><th>{t('plate')}</th><th>{t('vehicle')}</th><th>{t('totalSeats')}</th><th>{t('active')}</th><th></th></tr></thead>
                 <tbody>
                   {vehicles.data.vehicles.map((v) => (
                     <tr key={v.id}>
                       <td style={{ fontWeight: 700 }}>{v.plateNumber}</td>
                       <td>{[v.brand, v.model].filter(Boolean).join(' ') || '—'}</td>
                       <td>{v.capacity ?? '—'}</td>
-                      <td><span className={`badge ${v.isActive ? 'badge-success' : ''}`}>{v.isActive ? 'Actif' : 'Inactif'}</span></td>
+                      <td><span className={`badge ${v.isActive ? 'badge-success' : ''}`}>{v.isActive ? t('active') : t('none')}</span></td>
                       <td>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openForm({ kind: 'vehicle', item: v })}><Edit2 size={15} /></button>
@@ -240,25 +240,25 @@ export function CompanyTeamPage() {
 
       {target && (
         <Modal
-          title={target.kind === 'driver' ? (target.item ? 'Modifier le chauffeur' : 'Ajouter un chauffeur') : target.item ? 'Modifier le véhicule' : 'Nouveau véhicule'}
+          title={target.kind === 'driver' ? (target.item ? `${t('edit')} ${t('drivers')}` : t('addDriver')) : target.item ? `${t('edit')} ${t('vehiclesCount')}` : t('addVehicle')}
           subtitle={
             target.kind === 'driver' && !target.item
-              ? "Saisissez le numéro d'un passager existant pour le promouvoir chauffeur."
+              ? `${t('searchPassenger')} · ${t('addAsDriver')}`
               : undefined
           }
           onClose={() => setTarget(null)}
           footer={
             target.kind === 'driver' && !target.item ? (
               <>
-                <button className="btn" onClick={() => setTarget(null)}>Annuler</button>
+                <button className="btn" onClick={() => setTarget(null)}>{t('cancel')}</button>
                 <button className="btn btn-primary" disabled={!foundPassenger || busy} onClick={() => void addDriver()}>
-                  {busy ? 'Ajout…' : 'Ajouter comme chauffeur'}
+                  {busy ? t('add') : t('addAsDriver')}
                 </button>
               </>
             ) : (
               <>
-                <button className="btn" onClick={() => setTarget(null)}>Annuler</button>
-                <button className="btn btn-primary" type="submit" form="team-form" disabled={busy}>Enregistrer</button>
+                <button className="btn" onClick={() => setTarget(null)}>{t('cancel')}</button>
+                <button className="btn btn-primary" type="submit" form="team-form" disabled={busy}>{t('save')}</button>
               </>
             )
           }
@@ -266,7 +266,7 @@ export function CompanyTeamPage() {
           {error && <div style={{ marginBottom: 12 }}><Notice tone="error">{error}</Notice></div>}
           {target.kind === 'driver' && !target.item ? (
             <div>
-              <Field label="Numéro de téléphone du passager" required hint="La recherche démarre automatiquement après 6 chiffres.">
+              <Field label={`${t('phone')} ${t('passenger')}`} required hint={t('search')}>
                 <input
                   className="input"
                   inputMode="tel"
@@ -275,7 +275,7 @@ export function CompanyTeamPage() {
                   onChange={(e) => { setSearchPhone(e.target.value); setSearchError(''); setFoundPassenger(null); }}
                 />
               </Field>
-              {searching && <p className="muted" style={{ margin: '0 0 12px', fontSize: 13 }}>Recherche…</p>}
+              {searching && <p className="muted" style={{ margin: '0 0 12px', fontSize: 13 }}>{t('search')}</p>}
               {!searching && searchError && <div style={{ marginBottom: 12 }}><Notice tone="error">{searchError}</Notice></div>}
               {foundPassenger && (
                 <div className="found-passenger">
@@ -291,10 +291,10 @@ export function CompanyTeamPage() {
                     </div>
                   </div>
                   <div style={{ height: 12 }} />
-                  <Field label="Numéro de permis (facultatif)">
+                  <Field label={`${t('license')} (${t('optional')})`}>
                     <input className="input" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="12345-AB" />
                   </Field>
-                  <Notice tone="info">Ce passager garde son compte ; il pourra accéder à son espace chauffeur depuis son profil.</Notice>
+                  <Notice tone="info">{t('addAsDriver')}</Notice>
                 </div>
               )}
             </div>
@@ -302,24 +302,24 @@ export function CompanyTeamPage() {
             <form id="team-form" onSubmit={(e) => void submit(e)}>
               {target.kind === 'driver' ? (
                 <>
-                  <Field label="Numéro de permis"><input className="input" value={form.licenseNumber} onChange={set('licenseNumber')} /></Field>
-                  <Field label="Statut">
+                  <Field label={t('license')}><input className="input" value={form.licenseNumber} onChange={set('licenseNumber')} /></Field>
+                  <Field label={t('status')}>
                     <select className="select" value={form.status} onChange={set('status')}>
-                      <option value="available">Disponible</option>
-                      <option value="on_trip">En mission</option>
-                      <option value="off_duty">En repos</option>
+                      <option value="available">{t('available')}</option>
+                      <option value="on_trip">{t('onTrip')}</option>
+                      <option value="off_duty">{t('offDuty')}</option>
                     </select>
                   </Field>
                 </>
               ) : (
                 <>
-                  <Field label="Plaque d'immatriculation" required><input className="input" value={form.plateNumber} onChange={set('plateNumber')} required /></Field>
+                  <Field label={t('plate')} required><input className="input" value={form.plateNumber} onChange={set('plateNumber')} required /></Field>
                   <div className="field-row">
-                    <Field label="Marque"><input className="input" value={form.brand} onChange={set('brand')} /></Field>
-                    <Field label="Modèle"><input className="input" value={form.model} onChange={set('model')} /></Field>
-                    <Field label="Capacité"><input className="input" type="number" min={1} value={form.capacity} onChange={set('capacity')} /></Field>
+                    <Field label={t('vehicle')}><input className="input" value={form.brand} onChange={set('brand')} /></Field>
+                    <Field label={t('vehicle')}><input className="input" value={form.model} onChange={set('model')} /></Field>
+                    <Field label={t('totalSeats')}><input className="input" type="number" min={1} value={form.capacity} onChange={set('capacity')} /></Field>
                   </div>
-                  <Field label="Photo (URL)"><input className="input" value={form.photo} onChange={set('photo')} placeholder="https://…" /></Field>
+                  <Field label={t('logo')}><input className="input" value={form.photo} onChange={set('photo')} placeholder="https://…" /></Field>
                 </>
               )}
             </form>
@@ -329,9 +329,9 @@ export function CompanyTeamPage() {
 
       {deleting && (
         <ConfirmModal
-          title="Confirmer la suppression"
-          message={deleting.kind === 'driver' ? 'Le chauffeur sera retiré de votre équipe.' : 'Le véhicule sera supprimé de votre flotte.'}
-          confirmLabel="Supprimer"
+          title={`${t('confirm')} ${t('delete')}`}
+          message={deleting.kind === 'driver' ? `${t('drivers')} ${t('delete')}` : `${t('vehiclesCount')} ${t('delete')}`}
+          confirmLabel={t('delete')}
           danger
           onClose={() => setDeleting(null)}
           onConfirm={remove}

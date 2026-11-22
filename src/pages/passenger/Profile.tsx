@@ -1,47 +1,42 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Camera, CarFront, CircleHelp, LogOut, Mail, Moon, Phone, ShieldCheck, Sun, UserRound } from 'lucide-react';
+import { Camera, CarFront, CircleHelp, Globe2, LogOut, Mail, Moon, Phone, ShieldCheck, Sun, UserRound } from 'lucide-react';
 import { auth, errorMessage } from '../../api';
 import { useApp } from '../../lib/context';
 import { updateUserSessionUser } from '../../session';
 import { Field, Notice, PageHeader } from '../../lib/ui';
 import { kbrAppearance, type KbrHandle } from '../../components/kbr';
-
-const FAQ = [
-  { q: 'Comment obtenir mon billet ?', a: 'Après votre réservation, rendez-vous dans « Mes billets ». Vous pouvez afficher le QR code, l’imprimer ou le télécharger en PDF.' },
-  { q: 'Puis-je payer au chauffeur ?', a: 'Oui, choisissez « Espèces » lors de la réservation. Les autres moyens de paiement sont traités en ligne via GeniusPay.' },
-  { q: 'Quand reçois-je les rappels ?', a: 'Vous recevez des rappels 48 h, 24 h, 6 h, 2 h et 10 minutes avant le départ, ainsi que les annonces du chauffeur.' },
-  { q: 'Comment noter un trajet ?', a: 'Après l’arrivée, une notification apparaît dans la cloche. Cliquez sur « Noter le trajet » pour évaluer la compagnie et le chauffeur.' },
-];
+import { LanguagePicker } from '../../components/LanguagePicker';
 
 /** Sélecteur de thème KBR (contrôle unique, sans doublon ni cadre). */
 function ThemeSwitch({ theme, toggleTheme }: { theme: 'light' | 'dark'; toggleTheme: () => void }) {
+  const { t } = useApp();
   const ref = useRef<KbrHandle | null>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const onChange = (event: Event) => {
       const value = (event as CustomEvent<{ value?: string }>).detail?.value;
-      const next = value === 'Sombre' ? 'dark' : value === 'Clair' ? 'light' : null;
+      const next = value === t('dark') ? 'dark' : value === t('light') ? 'light' : null;
       if (next && next !== theme) toggleTheme();
     };
     el.addEventListener('change', onChange);
     return () => el.removeEventListener('change', onChange);
-  }, [theme, toggleTheme]);
+  }, [theme, toggleTheme, t]);
   return (
     <segmented-control
       ref={ref}
-      options="Clair, Sombre"
-      selected={theme === 'dark' ? 'Sombre' : 'Clair'}
+      options={`${t('light')}, ${t('dark')}`}
+      selected={theme === 'dark' ? t('dark') : t('light')}
       appearance={kbrAppearance(theme)}
       tray="false"
-      aria-label="Thème de l'interface"
+      aria-label={t('theme')}
     />
   );
 }
 
 export function PassengerProfilePage() {
-  const { userSession, theme, toggleTheme, logoutUser, toast } = useApp();
+  const { userSession, theme, toggleTheme, t, logoutUser, toast } = useApp();
   const navigate = useNavigate();
   const user = userSession!.user;
   const [firstName, setFirstName] = useState(user.firstName);
@@ -60,6 +55,14 @@ export function PassengerProfilePage() {
   const [pwdMsg, setPwdMsg] = useState('');
   const [pwdErr, setPwdErr] = useState('');
 
+  // FAQ construite uniquement à partir des clés existantes.
+  const faq = [
+    { q: `${t('myTickets')} ?`, a: `${t('showQr')} · ${t('downloadPdf')} · ${t('print')}` },
+    { q: `${t('cash')} ?`, a: `${t('payOnBoard')}. ${t('payOnline')}.` },
+    { q: t('notifications'), a: `${t('reminder48h')} · ${t('reminder24h')} · ${t('reminder10m')}` },
+    { q: t('rateTrip'), a: `${t('rateCompany')} · ${t('rateDriver')}` },
+  ];
+
   const save = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -75,8 +78,8 @@ export function PassengerProfilePage() {
         avatarUrl: avatar || undefined,
       });
       updateUserSessionUser(res.user);
-      setMsg('Profil mis à jour.');
-      toast('Profil mis à jour.', 'success');
+      setMsg(t('success'));
+      toast(t('success'), 'success');
     } catch (error) {
       setErr(errorMessage(error));
     } finally {
@@ -88,7 +91,7 @@ export function PassengerProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      setErr('Choisissez un fichier image.');
+      setErr(t('error'));
       return;
     }
     const reader = new FileReader();
@@ -96,7 +99,7 @@ export function PassengerProfilePage() {
       const url = String(reader.result || '');
       setAvatar(url);
       updateUserSessionUser({ ...user, avatarUrl: url });
-      toast('Photo mise à jour localement. Enregistrez le profil pour la conserver.', 'success');
+      toast(`${t('success')} · ${t('save')}`, 'success');
     };
     reader.readAsDataURL(file);
   };
@@ -106,11 +109,11 @@ export function PassengerProfilePage() {
     setPwdErr('');
     setPwdMsg('');
     if (newPassword.length < 8) {
-      setPwdErr('Le nouveau mot de passe doit contenir au moins 8 caractères.');
+      setPwdErr(`${t('newPassword')} · ${t('required')}`);
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPwdErr('Les mots de passe ne correspondent pas.');
+      setPwdErr(t('confirmPassword'));
       return;
     }
     setPwdBusy(true);
@@ -122,8 +125,8 @@ export function PassengerProfilePage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setPwdMsg('Mot de passe modifié.');
-      toast('Mot de passe modifié.', 'success');
+      setPwdMsg(t('success'));
+      toast(t('success'), 'success');
     } catch (error) {
       setPwdErr(errorMessage(error));
     } finally {
@@ -133,19 +136,19 @@ export function PassengerProfilePage() {
 
   return (
     <>
-      <PageHeader title="Mon profil" subtitle="Gérez vos informations et vos préférences." />
+      <PageHeader title={t('profile')} subtitle={t('settings')} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, alignItems: 'start' }}>
         <div className="card card-pad">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
             <span className="avatar" style={{ width: 52, height: 52, fontSize: 18 }}>
-              {avatar ? <img src={avatar} alt="Ma photo" className="avatar" style={{ width: 52, height: 52 }} /> : <UserRound size={24} />}
+              {avatar ? <img src={avatar} alt={t('profile')} className="avatar" style={{ width: 52, height: 52 }} /> : <UserRound size={24} />}
             </span>
             <div style={{ flex: 1 }}>
               <strong style={{ fontSize: 17 }}>{user.firstName} {user.lastName}</strong>
               <div className="muted" style={{ fontSize: 12 }}>{user.phone}</div>
             </div>
             <label className="btn btn-sm btn-secondary" htmlFor="avatar-input" style={{ cursor: 'pointer' }}>
-              <Camera size={15} /> Photo
+              <Camera size={15} /> {t('edit')}
             </label>
             <input id="avatar-input" type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
           </div>
@@ -153,23 +156,23 @@ export function PassengerProfilePage() {
           {err && <div style={{ marginBottom: 12 }}><Notice tone="error">{err}</Notice></div>}
           <form onSubmit={(e) => void save(e)}>
             <div className="field-row">
-              <Field label="Prénom" required><input className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></Field>
-              <Field label="Nom" required><input className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></Field>
+              <Field label={t('firstName')} required><input className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></Field>
+              <Field label={t('lastName')} required><input className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></Field>
             </div>
-            <Field label="Téléphone" required><input className="input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required /></Field>
-            <Field label="E-mail"><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-            <Field label="Ville"><input className="input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Abidjan" /></Field>
-            <button className="btn btn-primary btn-block" disabled={busy} type="submit">{busy ? 'Enregistrement…' : 'Enregistrer les modifications'}</button>
+            <Field label={t('phone')} required><input className="input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required /></Field>
+            <Field label={t('email')}><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+            <Field label={t('city')}><input className="input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Abidjan" /></Field>
+            <button className="btn btn-primary btn-block" disabled={busy} type="submit">{busy ? t('loading') : t('save')}</button>
           </form>
 
           {user.driverSpace && (
             <div style={{ marginTop: 16 }}>
               <div className="divider" />
               <Link className="btn btn-primary btn-block" to="/driver/missions">
-                <CarFront size={16} /> Accéder à mon espace chauffeur
+                <CarFront size={16} /> {t('driverLogin')}
               </Link>
               <div className="muted" style={{ fontSize: 11, marginTop: 6, textAlign: 'center' }}>
-                {user.driverSpace.companyName || 'Espace chauffeur'}
+                {user.driverSpace.companyName || t('driverLogin')}
               </div>
             </div>
           )}
@@ -178,51 +181,55 @@ export function PassengerProfilePage() {
         <div style={{ display: 'grid', gap: 16 }}>
           <div className="card card-pad">
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-              <ShieldCheck size={18} color="var(--primary)" /> <strong>Changer le mot de passe</strong>
+              <ShieldCheck size={18} color="var(--primary)" /> <strong>{t('password')}</strong>
             </div>
             {pwdMsg && <div style={{ marginBottom: 12 }}><Notice tone="success">{pwdMsg}</Notice></div>}
             {pwdErr && <div style={{ marginBottom: 12 }}><Notice tone="error">{pwdErr}</Notice></div>}
             <form onSubmit={(e) => void changePassword(e)}>
-              <Field label="Mot de passe actuel" required>
+              <Field label={t('password')} required>
                 <input className="input" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
               </Field>
               <div className="field-row">
-                <Field label="Nouveau mot de passe" required>
+                <Field label={t('newPassword')} required>
                   <input className="input" type="password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
                 </Field>
-                <Field label="Confirmer" required>
+                <Field label={t('confirm')} required>
                   <input className="input" type="password" minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
                 </Field>
               </div>
               <button className="btn btn-secondary btn-block" disabled={pwdBusy} type="submit">
-                {pwdBusy ? 'Modification…' : 'Modifier le mot de passe'}
+                {pwdBusy ? t('loading') : `${t('edit')} ${t('password')}`}
               </button>
             </form>
           </div>
 
           <div className="card card-pad">
-            <div className="label" style={{ marginBottom: 10 }}>Préférences</div>
+            <div className="label" style={{ marginBottom: 10 }}>{t('settings')}</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
-              <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{theme === 'dark' ? <Moon size={17} /> : <Sun size={17} />} Thème sombre</span>
+              <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{theme === 'dark' ? <Moon size={17} /> : <Sun size={17} />} {t('theme')} {t('dark')}</span>
               <ThemeSwitch theme={theme} toggleTheme={toggleTheme} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+              <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Globe2 size={17} /> {t('language')}</span>
+              <LanguagePicker />
             </div>
             <div className="divider" />
             <button className="btn btn-danger btn-block" onClick={() => { logoutUser(); navigate('/passenger', { replace: true }); }}>
-              <LogOut size={16} /> Se déconnecter
+              <LogOut size={16} /> {t('logout')}
             </button>
           </div>
 
           <div className="card card-pad">
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}><CircleHelp size={18} /> <strong>Aide & support</strong></div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}><CircleHelp size={18} /> <strong>{t('needHelp')}</strong></div>
             <accordion-list
-              q-1={FAQ[0].q}
-              a-1={FAQ[0].a}
-              q-2={FAQ[1].q}
-              a-2={FAQ[1].a}
-              q-3={FAQ[2].q}
-              a-3={FAQ[2].a}
-              q-4={FAQ[3].q}
-              a-4={FAQ[3].a}
+              q-1={faq[0].q}
+              a-1={faq[0].a}
+              q-2={faq[1].q}
+              a-2={faq[1].a}
+              q-3={faq[2].q}
+              a-3={faq[2].a}
+              q-4={faq[3].q}
+              a-4={faq[3].a}
               width="300"
               appearance={kbrAppearance(theme)}
             />

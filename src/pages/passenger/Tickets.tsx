@@ -11,7 +11,7 @@ import { RatingModal } from '../../components/RatingModal';
 import type { Booking } from '../../types';
 
 export function TicketsPage() {
-  const { userSession } = useApp();
+  const { userSession, t } = useApp();
   const token = userSession?.token || '';
   const [params] = useSearchParams();
   const highlight = params.get('ticket') || '';
@@ -22,22 +22,22 @@ export function TicketsPage() {
 
   return (
     <>
-      <PageHeader title="Mes billets" subtitle="Présentez le QR code ou le code au chauffeur lors de l'embarquement." />
-      {loading ? <ListSkeleton label="Chargement de vos billets…" rows={3} /> : error ? <ErrorView message={error} retry={() => void reload()} /> : (
+      <PageHeader title={t('myTickets')} subtitle={t('presentTicket')} />
+      {loading ? <ListSkeleton label={t('loading')} rows={3} /> : error ? <ErrorView message={error} retry={() => void reload()} /> : (
         <>
           <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
             {(['all', 'active', 'used'] as const).map((f) => (
               <button key={f} className={`btn btn-sm ${filter === f ? 'btn-secondary' : ''}`} onClick={() => setFilter(f)}>
-                {f === 'all' ? 'Tous' : f === 'active' ? 'Actifs' : 'Utilisés'}
+                {f === 'all' ? t('allTickets') : f === 'active' ? t('active') : t('usedTickets')}
               </button>
             ))}
           </div>
           {results.length === 0 ? (
             <Empty
               icon={TicketIcon}
-              title="Aucun billet pour le moment"
-              text="Réservez un trajet pour obtenir votre billet QR."
-              action={<Link className="btn btn-primary" to="/passenger">Rechercher un trajet</Link>}
+              title={t('noTickets')}
+              text={`${t('book')} · ${t('showQr')}`}
+              action={<Link className="btn btn-primary" to="/passenger">{t('search')}</Link>}
             />
           ) : (
             <div style={{ display: 'grid', gap: 14 }}>
@@ -55,20 +55,20 @@ export function TicketsPage() {
 }
 
 export function BookingsPage() {
-  const { userSession } = useApp();
+  const { userSession, t } = useApp();
   const token = userSession?.token || '';
   const { data, loading, error, reload } = useAsync(() => tripsApi.mine(token), [token], { bookings: [] as Booking[] });
   const [ratingTrip, setRatingTrip] = useState<{ id: string; label: string } | null>(null);
 
   return (
     <>
-      <PageHeader title="Mes réservations" subtitle="Historique complet de vos réservations." />
-      {loading ? <ListSkeleton label="Chargement…" rows={2} /> : error ? <ErrorView message={error} retry={() => void reload()} /> : data.bookings.length === 0 ? (
-        <Empty icon={History} title="Aucune réservation" action={<Link className="btn btn-primary" to="/passenger">Trouver un trajet</Link>} />
+      <PageHeader title={t('bookings')} subtitle={t('seeAll')} />
+      {loading ? <ListSkeleton label={t('loading')} rows={2} /> : error ? <ErrorView message={error} retry={() => void reload()} /> : data.bookings.length === 0 ? (
+        <Empty icon={History} title={t('noData')} action={<Link className="btn btn-primary" to="/passenger">{t('search')}</Link>} />
       ) : (
         <div className="card table-wrap">
           <table className="table">
-            <thead><tr><th>Trajet</th><th>Date</th><th>Montant</th><th>Paiement</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>{t('trips')}</th><th>{t('date')}</th><th>{t('amount')}</th><th>{t('paymentMethods')}</th><th>{t('status')}</th><th></th></tr></thead>
             <tbody>
               {data.bookings.map((b) => (
                 <tr key={b.id}>
@@ -82,10 +82,10 @@ export function BookingsPage() {
                   <td><StatusBadge status={b.status} /></td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      {b.ticket && <Link className="btn btn-sm" to={`/passenger/tickets?ticket=${encodeURIComponent(b.ticket.code)}`}>Billet</Link>}
+                      {b.ticket && <Link className="btn btn-sm" to={`/passenger/tickets?ticket=${encodeURIComponent(b.ticket.code)}`}>{t('ticket')}</Link>}
                       {b.trip?.status === 'completed' && (
                         <button className="btn btn-sm" onClick={() => setRatingTrip({ id: b.tripId, label: `${b.trip?.depart} → ${b.trip?.arrivee}` })}>
-                          <Star size={13} /> Noter
+                          <Star size={13} /> {t('rateTrip')}
                         </button>
                       )}
                     </div>

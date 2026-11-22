@@ -31,25 +31,25 @@ const passengerNav = (t: (key: 'search' | 'myTickets' | 'bookings' | 'profile') 
   { to: '/passenger/profile', label: t('profile'), icon: UserCog },
 ];
 
-const companyNav: NavItem[] = [
-  { to: '/company/overview', label: 'Aperçu', icon: LayoutDashboard },
-  { to: '/company/trips', label: 'Trajets', icon: BusFront },
-  { to: '/company/counter', label: 'Guichet', icon: QrCode },
-  { to: '/company/stats', label: 'Statistiques', icon: BarChart3 },
-  { to: '/company/team', label: 'Équipe & flotte', icon: CarFront },
-  { to: '/company/profile', label: 'Profil', icon: UserCog },
+const companyNav = (t: (key: 'overview' | 'trips' | 'counter' | 'stats' | 'team' | 'profile') => string): NavItem[] => [
+  { to: '/company/overview', label: t('overview'), icon: LayoutDashboard },
+  { to: '/company/trips', label: t('trips'), icon: BusFront },
+  { to: '/company/counter', label: t('counter'), icon: QrCode },
+  { to: '/company/stats', label: t('stats'), icon: BarChart3 },
+  { to: '/company/team', label: t('team'), icon: CarFront },
+  { to: '/company/profile', label: t('profile'), icon: UserCog },
 ];
 
-const driverNav: NavItem[] = [
-  { to: '/driver/missions', label: 'Missions', icon: ClipboardList },
-  { to: '/driver/scan', label: 'Scanner', icon: ScanLine },
-  { to: '/driver/incidents', label: 'Incidents', icon: BarChart3 },
-  { to: '/driver/profile', label: 'Profil', icon: UserCog },
+const driverNav = (t: (key: 'missions' | 'scan' | 'incidents' | 'profile') => string): NavItem[] => [
+  { to: '/driver/missions', label: t('missions'), icon: ClipboardList },
+  { to: '/driver/scan', label: t('scan'), icon: ScanLine },
+  { to: '/driver/incidents', label: t('incidents'), icon: BarChart3 },
+  { to: '/driver/profile', label: t('profile'), icon: UserCog },
 ];
 
-const adminNav: NavItem[] = [
-  { to: '/admin/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
-  { to: '/admin/users', label: 'Utilisateurs', icon: Users },
+const adminNav = (t: (key: 'dashboard' | 'users') => string): NavItem[] => [
+  { to: '/admin/dashboard', label: t('dashboard'), icon: LayoutDashboard },
+  { to: '/admin/users', label: t('users'), icon: Users },
 ];
 
 function PassengerLayout() {
@@ -61,7 +61,7 @@ function PassengerLayout() {
       bellToken={userSession?.token}
       bellRating
       profileTo="/passenger/profile"
-      profileLabel="Mon profil"
+      profileLabel={t('profile')}
     >
       <Outlet />
     </AppShell>
@@ -69,13 +69,13 @@ function PassengerLayout() {
 }
 
 function CompanyLayout() {
-  const { companySession } = useApp();
+  const { companySession, t } = useApp();
   return (
     <AppShell
       space="company"
-      nav={companyNav}
+      nav={companyNav(t)}
       profileTo="/company/profile"
-      profileLabel="Profil compagnie"
+      profileLabel={t('company')}
       accentColor={companySession?.user.primaryColor || undefined}
     >
       <Outlet />
@@ -84,11 +84,13 @@ function CompanyLayout() {
 }
 
 function DriverLayout() {
-  return <AppShell space="driver" nav={driverNav} profileTo="/driver/profile" profileLabel="Mon profil"><Outlet /></AppShell>;
+  const { t } = useApp();
+  return <AppShell space="driver" nav={driverNav(t)} profileTo="/driver/profile" profileLabel={t('profile')}><Outlet /></AppShell>;
 }
 
 function AdminLayout() {
-  return <AppShell space="admin" nav={adminNav}><Outlet /></AppShell>;
+  const { t } = useApp();
+  return <AppShell space="admin" nav={adminNav(t)}><Outlet /></AppShell>;
 }
 
 function CompanyEntry() {

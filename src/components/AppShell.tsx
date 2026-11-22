@@ -7,6 +7,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useApp } from '../lib/context';
+import type { TranslationKey } from '../i18n';
 import { initials } from '../lib/format';
 import { NotificationBell } from './NotificationBell';
 
@@ -17,11 +18,11 @@ export interface NavItem {
   end?: boolean;
 }
 
-const SPACES: Array<{ key: string; label: string; to: string }> = [
-  { key: 'passenger', label: 'Passager', to: '/passenger' },
-  { key: 'company', label: 'Compagnie', to: '/company' },
-  { key: 'driver', label: 'Chauffeur', to: '/driver' },
-  { key: 'admin', label: 'Admin', to: '/admin' },
+const SPACES: Array<{ key: string; label: TranslationKey; to: string }> = [
+  { key: 'passenger', label: 'passengerLogin', to: '/passenger' },
+  { key: 'company', label: 'companyLogin', to: '/company' },
+  { key: 'driver', label: 'driverLogin', to: '/driver' },
+  { key: 'admin', label: 'adminSpace', to: '/admin' },
 ];
 
 export function AppShell({
@@ -43,13 +44,13 @@ export function AppShell({
   profileTo?: string;
   accentColor?: string;
 }) {
-  const { theme, toggleTheme, logoutUser, logoutCompany, userSession, companySession } = useApp();
+  const { theme, toggleTheme, logoutUser, logoutCompany, userSession, companySession, t } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
 
   const session = space === 'company' ? companySession : userSession;
   const user = session?.user ?? null;
-  const displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Mon compte';
+  const displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || t('profile');
 
   const logout = () => {
     if (space === 'company') logoutCompany();
@@ -73,7 +74,7 @@ export function AppShell({
             whiteSpace: 'nowrap',
           }}
         >
-          {s.label}
+          {t(s.label)}
         </Link>
       ))}
     </div>
@@ -88,7 +89,7 @@ export function AppShell({
           </Link>
           <div style={{ flex: 1 }} />
           <div className="desktop-only" style={{ display: 'none' }}>{switcher}</div>
-          <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title="Thème" aria-label="Changer de thème">
+          <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={t('theme')} aria-label={t('theme')}>
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           {bellToken && <NotificationBell token={bellToken} allowRating={bellRating} />}
@@ -98,7 +99,7 @@ export function AppShell({
             </Link>
           )}
           {!profileTo && <span className="muted" style={{ fontSize: 12, display: 'none' }}>{displayName}</span>}
-          <button className="btn btn-ghost btn-icon" onClick={logout} title="Déconnexion" aria-label="Déconnexion">
+          <button className="btn btn-ghost btn-icon" onClick={logout} title={t('logout')} aria-label={t('logout')}>
             <LogOut size={18} />
           </button>
         </div>
@@ -120,7 +121,7 @@ export function AppShell({
             </nav>
           </div>
           <div style={{ marginTop: 14 }}>
-            <div className="label" style={{ paddingLeft: 4 }}>Autres espaces</div>
+            <div className="label" style={{ paddingLeft: 4 }}>{t('seeAll')}</div>
             <div className="card" style={{ padding: 10 }}>{switcher}</div>
           </div>
         </aside>

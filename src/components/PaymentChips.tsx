@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
-import { normalizeMethods, PAYMENT_METHODS } from '../paymentMethods';
+import { normalizeMethods, paymentMethodLabel, PAYMENT_METHODS } from '../paymentMethods';
+import { useApp } from '../lib/context';
 
 /**
  * Grille de boutons toggles pour la liste fermée des moyens de paiement.
@@ -8,12 +9,13 @@ import { normalizeMethods, PAYMENT_METHODS } from '../paymentMethods';
 export function PaymentChips({
   value,
   onChange,
-  label = 'Moyens de paiement',
+  label,
 }: {
   value: string[];
   onChange: (methods: string[]) => void;
   label?: string;
 }) {
+  const { lang, t } = useApp();
   const selected = normalizeMethods(value);
 
   const toggle = (method: string) => {
@@ -25,7 +27,7 @@ export function PaymentChips({
 
   return (
     <div className="field">
-      <span className="label">{label}</span>
+      <span className="label">{label ?? t('paymentMethods')}</span>
       <div className="payment-chips">
         {PAYMENT_METHODS.map((method) => {
           const active = selected.includes(method);
@@ -38,13 +40,13 @@ export function PaymentChips({
               onClick={() => toggle(method)}
             >
               {active && <Check size={13} />}
-              <span>{method}</span>
+              <span>{paymentMethodLabel(method, lang)}</span>
             </button>
           );
         })}
       </div>
       <span className="muted" style={{ fontSize: 11 }}>
-        Actifs : {selected.join(', ')}
+        {t('active')} : {selected.map((m) => paymentMethodLabel(m, lang)).join(', ')}
       </span>
     </div>
   );

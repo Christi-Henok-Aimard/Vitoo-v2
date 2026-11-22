@@ -1,16 +1,34 @@
 import type { Trip } from '../types';
+import type { Lang } from '../i18n';
+
+function currentLang(): Lang {
+  const saved = localStorage.getItem('vitoo_lang');
+  return saved === 'en' || saved === 'dyu' || saved === 'bci' ? saved : 'fr';
+}
+
+function locale(): string {
+  const lang = currentLang();
+  return lang === 'en' ? 'en-GB' : 'fr-FR';
+}
+
+const relativeWords: Record<Lang, { now: string; ago: string; min: string; hour: string; day: string }> = {
+  fr: { now: "à l'instant", ago: 'il y a', min: 'min', hour: 'h', day: 'j' },
+  en: { now: 'just now', ago: '', min: 'min', hour: 'h', day: 'd' },
+  dyu: { now: 'sisan', ago: 'a bɛ', min: 'miniti', hour: 'lɛɛrɛ', day: 'don' },
+  bci: { now: 'ndɛn', ago: 'a be', min: 'minit', hour: 'ngɔn', day: 'lɛ' },
+};
 
 export function formatMoney(value: number | string | null | undefined): string {
   const n = typeof value === 'string' ? Number(value) : value;
   if (n === null || n === undefined || Number.isNaN(n)) return '—';
-  return `${n.toLocaleString('fr-FR')} FCFA`;
+  return `${n.toLocaleString(locale())} FCFA`;
 }
 
 export function formatDate(value: string | null | undefined, withYear = false): string {
   if (!value) return '—';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString('fr-FR', {
+  return d.toLocaleDateString(locale(), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -22,21 +40,22 @@ export function formatDateTime(value: string | null | undefined): string {
   if (!value) return '—';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+  return d.toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 export function relativeTime(value: string | null | undefined): string {
   if (!value) return '';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '';
+  const w = relativeWords[currentLang()];
   const diff = Date.now() - d.getTime();
-  if (diff < 60_000) return "à l'instant";
+  if (diff < 60_000) return w.now;
   const min = Math.floor(diff / 60_000);
-  if (min < 60) return `il y a ${min} min`;
+  if (min < 60) return [w.ago, `${min} ${w.min}`].filter(Boolean).join(' ');
   const h = Math.floor(min / 60);
-  if (h < 24) return `il y a ${h} h`;
+  if (h < 24) return [w.ago, `${h} ${w.hour}`].filter(Boolean).join(' ');
   const days = Math.floor(h / 24);
-  return `il y a ${days} j`;
+  return [w.ago, `${days} ${w.day}`].filter(Boolean).join(' ');
 }
 
 export function initials(first?: string | null, last?: string | null): string {

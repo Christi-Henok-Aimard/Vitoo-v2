@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { Loader2, Star, X, type LucideIcon } from 'lucide-react';
 import { STATUS_LABEL, statusTone } from './format';
 import { useApp } from './context';
+import type { TranslationKey } from '../i18n';
 import { kbrAppearance, type KbrHandle } from '../components/kbr';
 
 export function Spinner({ label }: { label?: string }) {
@@ -13,8 +14,9 @@ export function Spinner({ label }: { label?: string }) {
   );
 }
 
-export function Loading({ label = 'Chargement…' }: { label?: string }) {
-  return <div className="loading-page"><Spinner label={label} /></div>;
+export function Loading({ label }: { label?: string }) {
+  const { t } = useApp();
+  return <div className="loading-page"><Spinner label={label || t('loading')} /></div>;
 }
 
 export function Empty({
@@ -48,10 +50,28 @@ export function Notice({
   return <div className={`notice notice-${tone}`}>{children}</div>;
 }
 
+const STATUS_KEYS: Record<string, TranslationKey> = {
+  scheduled: 'scheduled',
+  boarding: 'boarding',
+  in_transit: 'inTransit',
+  completed: 'completed',
+  cancelled: 'cancelled',
+  confirmed: 'confirm',
+  paid: 'paymentConfirmed',
+  pending: 'waitingPassengers',
+  failed: 'paymentFailed',
+  active: 'active',
+  used: 'used',
+  available: 'available',
+  on_trip: 'onTrip',
+  off_duty: 'offDuty',
+};
+
 export function StatusBadge({ status }: { status?: string | null }) {
-  const { theme } = useApp();
+  const { theme, t } = useApp();
   const tone = statusTone(status);
-  const label = STATUS_LABEL[status || ''] || status || '—';
+  const key = status ? STATUS_KEYS[status] : undefined;
+  const label = key ? t(key) : STATUS_LABEL[status || ''] || status || '—';
   const accent: Record<ReturnType<typeof statusTone>, string> = {
     success: '#16a34a',
     warning: '#f59e0b',
@@ -65,7 +85,7 @@ export function StatusBadge({ status }: { status?: string | null }) {
       busy-label={label}
       done-label={label}
       fail-label={label}
-      retry-label="Réessayer"
+      retry-label={t('retry')}
       accent={accent[tone]}
       reset-after="8"
       appearance={kbrAppearance(theme)}
@@ -75,11 +95,12 @@ export function StatusBadge({ status }: { status?: string | null }) {
 }
 
 /** Liste en chargement, rendue avec le composant KBR `skeleton-list`. */
-export function ListSkeleton({ label = 'Chargement…', rows = 3 }: { label?: string; rows?: number }) {
-  const { theme } = useApp();
+export function ListSkeleton({ label, rows = 3 }: { label?: string; rows?: number }) {
+  const { theme, t } = useApp();
+  const text = label === undefined ? t('loading') : label;
   return (
     <div className="skeleton-wrap">
-      {label && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{label}</div>}
+      {text && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{text}</div>}
       <skeleton-list
         rows={rows}
         avatars="false"
@@ -104,6 +125,7 @@ export function Stars({ value, size = 14 }: { value?: number | null; size?: numb
 }
 
 export function StarInput({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const { t } = useApp();
   return (
     <span style={{ display: 'inline-flex', gap: 4 }}>
       {[1, 2, 3, 4, 5].map((i) => (
@@ -112,7 +134,7 @@ export function StarInput({ value, onChange }: { value: number; onChange: (n: nu
           type="button"
           className={`star-btn ${i <= value ? 'on' : ''}`}
           onClick={() => onChange(i)}
-          aria-label={`${i} étoiles`}
+          aria-label={`${i} ${t('rating')}`}
         >
           <Star size={28} fill={i <= value ? '#f59e0b' : 'none'} />
         </button>
@@ -156,6 +178,7 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const { t } = useApp();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -172,7 +195,7 @@ export function Modal({
             <h2 style={{ fontSize: 19 }}>{title}</h2>
             {subtitle && <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>{subtitle}</p>}
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Fermer"><X size={18} /></button>
+          <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label={t('close')}><X size={18} /></button>
         </div>
         {children}
         {footer && <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>{footer}</div>}
@@ -184,7 +207,7 @@ export function Modal({
 export function ConfirmModal({
   title,
   message,
-  confirmLabel = 'Confirmer',
+  confirmLabel,
   onConfirm,
   onClose,
   danger,
@@ -196,15 +219,16 @@ export function ConfirmModal({
   onClose: () => void;
   danger?: boolean;
 }) {
+  const { t } = useApp();
   return (
     <Modal
       title={title}
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>Annuler</button>
+          <button className="btn" onClick={onClose}>{t('cancel')}</button>
           <button className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} onClick={() => void onConfirm()}>
-            {confirmLabel}
+            {confirmLabel || t('confirm')}
           </button>
         </>
       }
@@ -285,19 +309,19 @@ function KbrToast({ message, appearance }: { message: string; appearance: 'light
 }
 
 export function Toasts() {
-  const { toasts, dismissToast, theme } = useApp();
+  const { toasts, dismissToast, theme, t } = useApp();
   if (!toasts.length) return null;
   const appearance = kbrAppearance(theme);
   return (
     <div className="toast-host">
-      {toasts.map((t) => (
-        <div key={t.id} className={`toast toast-kbr ${t.type}`}>
-          <KbrToast message={t.message} appearance={appearance} />
+      {toasts.map((item) => (
+        <div key={item.id} className={`toast toast-kbr ${item.type}`}>
+          <KbrToast message={item.message} appearance={appearance} />
           <button
             className="btn btn-ghost btn-icon kbr-toast-close"
             style={{ width: 24, height: 24 }}
-            onClick={() => dismissToast(t.id)}
-            aria-label="Fermer"
+            onClick={() => dismissToast(item.id)}
+            aria-label={t('close')}
           >
             <X size={14} />
           </button>
@@ -308,11 +332,12 @@ export function Toasts() {
 }
 
 export function ErrorView({ message, retry }: { message: string; retry?: () => void }) {
+  const { t } = useApp();
   return (
     <Notice tone="error">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between' }}>
         <span>{message}</span>
-        {retry && <button className="btn btn-sm" onClick={retry}>Réessayer</button>}
+        {retry && <button className="btn btn-sm" onClick={retry}>{t('retry')}</button>}
       </div>
     </Notice>
   );

@@ -46,9 +46,11 @@ La compagnie active ses moyens depuis son profil et ses trajets via des **bouton
 
 ## Langues
 
-L'application propose **4 langues** : français, anglais, **dioula (jula)** et **baoulé**. Le sélecteur est disponible sur l'authentification, dans l'en-tête de tous les espaces et dans le profil. Le choix est mémorisé dans `vitoo_lang`.
+L'application propose **4 langues** : français, anglais, **dioula (jula)** et **baoulé**. Le sélecteur se trouve **uniquement dans les paramètres** (profil passager, compagnie et chauffeur), jamais sur les pages de connexion. Le choix est mémorisé dans `vitoo_lang`.
 
-Le site passager (recherche trajets, résultats, notifications) est traduit dans les 4 langues. Les traductions dioula/baoulé sont des versions de référence à faire relire par un locuteur natif avant une communication grand public ; les termes techniques (billet, gare, FCFA) restent volontairement inchangés, comme dans l'usage courant en Côte d'Ivoire.
+**Toute l'interface est traduite** : authentification, navigation, recherche, réservation, billets, notifications, profils, espaces compagnie/chauffeur/admin, messages d'erreur et dates relatives. Aucun texte ne doit rester dans une langue différente de celle choisie. Les noms de villes, numéros, codes, montants et noms de compagnies restent des données inchangées.
+
+Les traductions dioula/baoulé sont des versions de référence à faire relire par un locuteur natif avant une communication grand public ; les noms de services (Wave, Orange Money, MTN MoMo, Moov Money, GeniusPay) et l'acronyme RCCM restent inchangés.
 
 ## Identité visuelle
 

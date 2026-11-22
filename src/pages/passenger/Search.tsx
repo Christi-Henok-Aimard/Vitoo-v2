@@ -134,7 +134,7 @@ export function SearchPage() {
             <Field label={t('date')}>
               <input className="input" type="date" min={todayInput()} value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
-            <button className="btn btn-ghost btn-icon" type="button" onClick={() => { setDepart(arrivee); setArrivee(depart); }} title="Inverser" style={{ marginBottom: 14 }}>
+            <button className="btn btn-ghost btn-icon" type="button" onClick={() => { setDepart(arrivee); setArrivee(depart); }} title={t('swap')} style={{ marginBottom: 14 }}>
               <ArrowLeftRight size={17} />
             </button>
             <button className="btn btn-primary" type="submit"><SearchIcon size={16} /> {t('search')}</button>

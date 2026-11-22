@@ -1,3 +1,5 @@
+import type { Lang } from './i18n';
+
 // Liste fermée des moyens de paiement (identique côté backend).
 export const PAYMENT_METHODS = [
   'Espèces',
@@ -37,6 +39,20 @@ function toArray(input: unknown): string[] {
  * Déduplique, ne garde que les valeurs connues et garantit au moins « Espèces ».
  * Accepte un tableau, une chaîne JSON ou une liste séparée par des virgules.
  */
+/** Libellé affiché d'un moyen (les valeurs stockées restent inchangées). */
+export function paymentMethodLabel(method: string, lang: Lang): string {
+  if (lang === 'fr') return method;
+  const labels: Record<string, Record<Exclude<Lang, 'fr'>, string>> = {
+    'Espèces': { en: 'Cash', dyu: 'Wari', bci: 'Wari' },
+    'Wave': { en: 'Wave', dyu: 'Wave', bci: 'Wave' },
+    'Orange Money': { en: 'Orange Money', dyu: 'Orange Money', bci: 'Orange Money' },
+    'MTN MoMo': { en: 'MTN MoMo', dyu: 'MTN MoMo', bci: 'MTN MoMo' },
+    'Moov Money': { en: 'Moov Money', dyu: 'Moov Money', bci: 'Moov Money' },
+    'Carte bancaire': { en: 'Bank card', dyu: 'Kart', bci: 'Kart' },
+  };
+  return labels[method]?.[lang as Exclude<Lang, 'fr'>] ?? method;
+}
+
 export function normalizeMethods(input: unknown): string[] {
   const result: string[] = [];
   for (const item of toArray(input)) {

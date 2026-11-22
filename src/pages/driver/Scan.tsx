@@ -26,7 +26,7 @@ function extractCode(raw: string): string {
 }
 
 export function DriverScanPage() {
-  const { userSession, toast } = useApp();
+  const { userSession, toast, t } = useApp();
   const token = userSession!.token;
   const [params] = useSearchParams();
   const tripId = params.get('tripId') || '';
@@ -48,7 +48,7 @@ export function DriverScanPage() {
     try {
       const res = await driverApi.validate(token, value);
       setResult(res.ticket);
-      toast('Billet validé. Bon voyage !', 'success');
+      toast(t('validate'), 'success');
     } catch (err) {
       setError(errorMessage(err));
       toast(errorMessage(err), 'error');
@@ -71,7 +71,7 @@ export function DriverScanPage() {
       setScanning(true);
       setMode('camera');
     } catch (err) {
-      setCameraError(errorMessage(err) || "Impossible d'accéder à la caméra.");
+      setCameraError(errorMessage(err) || t('camera'));
       scannerRef.current = null;
     }
   };
@@ -102,65 +102,65 @@ export function DriverScanPage() {
 
   return (
     <>
-      <PageHeader title="Scanner un billet" subtitle="Scannez le QR code ou saisissez le code manuellement." />
+      <PageHeader title={t('scan')} subtitle={`${t('showQr')} · ${t('manualCode')}`} />
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-        <button className={`btn btn-sm ${mode === 'manual' ? 'btn-secondary' : ''}`} onClick={() => { void stopCamera(); setMode('manual'); }}><Keyboard size={15} /> Code manuel</button>
-        <button className={`btn btn-sm ${mode === 'camera' ? 'btn-secondary' : ''}`} onClick={() => void startCamera()}><Camera size={15} /> Caméra</button>
+        <button className={`btn btn-sm ${mode === 'manual' ? 'btn-secondary' : ''}`} onClick={() => { void stopCamera(); setMode('manual'); }}><Keyboard size={15} /> {t('manualCode')}</button>
+        <button className={`btn btn-sm ${mode === 'camera' ? 'btn-secondary' : ''}`} onClick={() => void startCamera()}><Camera size={15} /> {t('camera')}</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, alignItems: 'start' }}>
         <div className="card card-pad">
           {mode === 'manual' ? (
             <>
-              <strong style={{ fontSize: 16 }}>Saisir le code du billet</strong>
+              <strong style={{ fontSize: 16 }}>{t('ticketCode')}</strong>
               <div className="divider" />
               <form onSubmit={submit}>
-                <label className="label">Code du billet</label>
+                <label className="label">{t('ticketCode')}</label>
                 <input className="input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="VIT-XXXXXX" autoFocus />
                 <div style={{ marginTop: 12 }}>
                   <button className="btn btn-primary btn-block" type="submit" disabled={busy || !code.trim()}>
-                    {busy ? <Spinner label="Vérification…" /> : <><ScanLine size={16} /> Valider le billet</>}
+                    {busy ? <Spinner label={t('loading')} /> : <><ScanLine size={16} /> {t('validate')}</>}
                   </button>
                 </div>
               </form>
             </>
           ) : (
             <>
-              <strong style={{ fontSize: 16 }}>Scan caméra</strong>
+              <strong style={{ fontSize: 16 }}>{t('camera')}</strong>
               <div className="divider" />
               <div id="qr-reader" style={{ width: '100%', minHeight: 260, background: 'var(--surface-2)', borderRadius: 12, overflow: 'hidden' }} />
-              {scanning && <button className="btn btn-block" style={{ marginTop: 12 }} onClick={() => void stopCamera()}><Square size={15} /> Arrêter la caméra</button>}
+              {scanning && <button className="btn btn-block" style={{ marginTop: 12 }} onClick={() => void stopCamera()}><Square size={15} /> {t('close')}</button>}
               {cameraError && <div style={{ marginTop: 12 }}><Notice tone="error">{cameraError}</Notice></div>}
-              <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>Autorisez l'accès à la caméra. Le QR code est reconnu automatiquement.</p>
+              <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>{t('camera')} · {t('showQr')}</p>
             </>
           )}
         </div>
 
         <div className="card card-pad">
-          <strong style={{ fontSize: 16 }}>Résultat</strong>
+          <strong style={{ fontSize: 16 }}>{t('details')}</strong>
           <div className="divider" />
-          {busy ? <Spinner label="Vérification en cours…" /> : error ? (
+          {busy ? <Spinner label={t('loading')} /> : error ? (
             <Notice tone="error">{error}</Notice>
           ) : result ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--success)' }}><CheckCircle2 size={20} /> <strong>Billet valide</strong></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--success)' }}><CheckCircle2 size={20} /> <strong>{t('success')}</strong></div>
               <div style={{ marginTop: 14 }}>
-                <div className="muted" style={{ fontSize: 12 }}>Code</div>
+                <div className="muted" style={{ fontSize: 12 }}>{t('code')}</div>
                 <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 16 }}>{result.code}</div>
                 <div className="divider" />
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><UserRound size={16} /> <strong>{result.passengerName || 'Passager'}</strong></div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><UserRound size={16} /> <strong>{result.passengerName || t('passenger')}</strong></div>
                 <div className="muted" style={{ fontSize: 12 }}>{result.passengerPhone || '—'}</div>
                 <div className="divider" />
-                <div className="muted" style={{ fontSize: 12 }}>Place</div>
-                <div style={{ fontWeight: 700 }}>{result.seatNumber || 'Non assignée'}</div>
-                <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>Montant</div>
+                <div className="muted" style={{ fontSize: 12 }}>{t('seats')}</div>
+                <div style={{ fontWeight: 700 }}>{result.seatNumber || t('none')}</div>
+                <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{t('amount')}</div>
                 <div style={{ fontWeight: 700 }}>{formatMoney(result.amount)}</div>
               </div>
             </>
           ) : (
-            <Empty icon={ScanLine} title="En attente d'un billet" text="Le résultat de la validation s'affichera ici." />
+            <Empty icon={ScanLine} title={t('waitingPassengers')} text={t('validate')} />
           )}
-          {tripId && <div style={{ marginTop: 16 }}><Link className="btn btn-block" to={`/driver/missions/${tripId}`}>Retour à la mission</Link></div>}
+          {tripId && <div style={{ marginTop: 16 }}><Link className="btn btn-block" to={`/driver/missions/${tripId}`}>{t('back')}</Link></div>}
         </div>
       </div>
     </>
