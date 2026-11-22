@@ -4,7 +4,6 @@ import { Prisma, TripStatus, DriverStatus } from '@prisma/client';
 import { prisma, isUniqueError } from '../db.js';
 import {
   driverView,
-  findOrCreatePassenger,
   findUserByPhone,
   hashPassword,
   normalizePhone,
@@ -13,8 +12,9 @@ import {
   validatePassword,
   HttpError,
 } from '../auth.js';
+import { createNotification } from '../notifications.js';
 import { normalizeMethods } from '../paymentMethods.js';
-import { formatTrip, parseStringArray, createBookingAndTicket } from './trips.js';
+import { formatTrip, parseStringArray, generateTicketCode } from './trips.js';
 
 export const companyRouter = Router();
 companyRouter.use(requireAuth, requireRole('company'));
@@ -231,6 +231,17 @@ companyRouter.post('/drivers', async (request, response) => {
       status: DriverStatus.available,
     },
   });
+  const company = await prisma.user.findUnique({
+    where: { id: companyIdOf(request) },
+    select: { companyName: true },
+  });
+  await createNotification({
+    userId: user.id,
+    type: 'driver_added',
+    title: company?.companyName || 'Vitoo',
+    body: '',
+    dedupeKey: `driver-added:${driver.id}`,
+  });
   return response.status(201).json({ driver: await driverView(driver) });
 });
 
@@ -373,21 +384,57 @@ companyRouter.post('/tickets', async (request, response) => {
     return response.status(400).json({ message: 'passengerName et passengerPhone sont requis.' });
   }
   const seats = Math.max(1, Number(body.seats) || 1);
-  const user = await findOrCreatePassenger({ phone: passengerPhone, name: passengerName });
+  const paymentMethod = str(body.paymentMethod) || 'Espèces';
+
+  // Décrément atomique : une vente au guichet ne doit pas dépasser les places restantes.
+  const updated = await prisma.trip.updateMany({
+    where: { id: trip.id, availableSeats: { gte: seats } },
+    data: { availableSeats: { decrement: seats } },
+  });
+  if (updated.count === 0) {
+    return response.status(400).json({ message: 'Places insuffisantes.' });
+  }
+
+  const seatNumber = str(body.seatNumber) || null;
+  const code = generateTicketCode();
+  const qrData = JSON.stringify({
+    code,
+    tripId: trip.id,
+    passengerName,
+    passengerPhone,
+    seats,
+    depart: trip.depart,
+    arrivee: trip.arrivee,
+    date: trip.date,
+    time: trip.time,
+  });
+
   try {
-    const { booking, ticket } = await createBookingAndTicket({
-      userId: user.id,
-      tripId: trip.id,
-      passengerName,
-      passengerPhone,
-      seats,
-      amount: trip.price * seats,
-      paymentMethod: str(body.paymentMethod) || 'Espèces',
-      soldBy: 'counter',
+    // Vente au guichet : billet direct, sans réservation (plusieurs billets autorisés
+    // pour le même passager sur un même trajet).
+    const ticket = await prisma.ticket.create({
+      data: {
+        bookingId: null,
+        tripId: trip.id,
+        companyId: companyIdOf(request),
+        code,
+        qrData,
+        seatNumber,
+        passengerName,
+        passengerPhone,
+        paymentMethod,
+        amount: trip.price * seats,
+        soldBy: 'counter',
+        status: 'active',
+      },
     });
-    return response.status(201).json({ booking, ticket });
+    return response.status(201).json({ ticket });
   } catch (error) {
-    if (error instanceof HttpError) return response.status(error.status).json({ message: error.message });
+    // La place avait été réservée : on la restitue si le billet n'a pas été créé.
+    await prisma.trip.update({
+      where: { id: trip.id },
+      data: { availableSeats: { increment: seats } },
+    });
     throw error;
   }
 });

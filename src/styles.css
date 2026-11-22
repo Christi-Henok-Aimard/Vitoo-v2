@@ -841,3 +841,7 @@ status-pill { pointer-events: none; }
   }
   .spinner { animation-duration: 1.2s; }
 }
+
+/* Billets horizontaux : aucun défilement interne, même avec plusieurs billets. */
+.kbr-ticket-wrap { display: block; overflow: visible; }
+.kbr-ticket-wrap tear-ticket-horizontal { display: block; max-width: 100%; }

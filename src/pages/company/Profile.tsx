@@ -34,6 +34,19 @@ export function CompanyProfilePage() {
     setForm((prev) => ({ ...prev, [k]: e.target.value }));
   const setMethods = (paymentMethods: string[]) => setForm((prev) => ({ ...prev, paymentMethods }));
 
+  /** Import du logo : on le stocke en data URL dans le champ companyLogo existant. */
+  const onLogoFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setForm((prev) => ({ ...prev, companyLogo: reader.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const save = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -105,6 +118,20 @@ export function CompanyProfilePage() {
         <div style={{ display: 'grid', gap: 16 }}>
           <div className="card card-pad">
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}><Palette size={18} /> <strong>{t('branding')}</strong></div>
+            <div className="label" style={{ marginBottom: 6 }}>{t('logo')}</div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+              <span className="stat-icon" style={{ background: 'var(--primary-soft)', color: 'var(--primary)', width: 52, height: 52, flexShrink: 0 }}>
+                {form.companyLogo ? (
+                  <img src={form.companyLogo} alt={t('logo')} style={{ width: 52, height: 52, objectFit: 'contain', borderRadius: 10 }} />
+                ) : (
+                  <Building2 size={22} />
+                )}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <input type="file" accept="image/*" onChange={onLogoFile} aria-label={t('logo')} style={{ fontSize: 12, maxWidth: '100%' }} />
+                <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>Importer une image (PNG, JPG…)</div>
+              </div>
+            </div>
             <Field label={`${t('logo')} (URL)`}><input className="input" value={form.companyLogo} onChange={set('companyLogo')} placeholder="https://…" /></Field>
             <div className="field-row">
               <Field label={t('primaryColor')}><input className="input" type="color" value={form.primaryColor} onChange={set('primaryColor')} style={{ padding: 4, height: 42 }} /></Field>

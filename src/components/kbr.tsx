@@ -15,6 +15,7 @@ declare module 'react' {
       'toast-message': KbrElementProps;
       'copy-button': KbrElementProps;
       'tear-ticket': KbrElementProps;
+      'tear-ticket-horizontal': KbrElementProps;
       'status-pill': KbrElementProps;
       'skeleton-list': KbrElementProps;
       'accordion-list': KbrElementProps;

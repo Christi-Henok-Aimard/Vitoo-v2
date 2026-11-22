@@ -541,7 +541,9 @@ export function AdminLogin() {
     try {
       const res = await auth.login({ phone: phone.trim(), password });
       if (res.user.role !== 'admin') {
-        setError(t('adminOnly'));
+        // Ne pas répéter le sous-titre « espace réservé » dans la boîte d'erreur :
+        // on affiche uniquement une vraie erreur d'authentification.
+        setError(t('error'));
         setBusy(false);
         return;
       }

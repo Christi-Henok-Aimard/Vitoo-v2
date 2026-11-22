@@ -44,6 +44,20 @@ npm run dev          # http://localhost:5173
 
 La compagnie active ses moyens depuis son profil et ses trajets via des **boutons** : Espèces, Wave, Orange Money, MTN MoMo, Moov Money, Carte bancaire. Le passager ne voit que les moyens activés pour le trajet choisi. « Espèces » crée le billet immédiatement (paiement à l'embarquement) ; les autres moyens redirigent vers GeniusPay. Sans clés GeniusPay, le backend répond 503 volontairement — aucun faux billet n'est créé.
 
+## Espace chauffeur et notifications
+
+Un passager devient chauffeur lorsqu'une compagnie cherche son numéro dans « Équipe & flotte » puis clique sur « Ajouter comme chauffeur ». Il reçoit alors une notification « Ajouté comme chauffeur » avec un bouton « Espace chauffeur » qui l'amène directement dans son espace. Le bouton reste aussi disponible dans son profil passager : il peut basculer entre ses deux espaces à tout moment.
+
+## incidences, guichet et billets
+
+- Les incidents du chauffeur sont listés via `GET /api/driver/incidents`.
+- La vente au guichet crée un billet sans réservation : plusieurs billets peuvent être vendus au même passager sur un même trajet.
+- Les billets sont affichés horizontalement (composant KBR `tear-ticket-horizontal`) ; l'impression et le PDF sont en paysage.
+
+## Identité de la compagnie
+
+Dans « Profil → Marque blanche », la compagnie peut téléverser son logo. Ce logo remplace celui de Vitoo dans l'en-tête de son espace et apparaît sur ses billets avec son nom. Le pied de page de l'espace compagnie affiche le logo Vitoo.
+
 ## Langues
 
 L'application propose **4 langues** : français, anglais, **dioula (jula)** et **baoulé**. Le sélecteur se trouve **uniquement dans les paramètres** (profil passager, compagnie et chauffeur), jamais sur les pages de connexion. Le choix est mémorisé dans `vitoo_lang`.

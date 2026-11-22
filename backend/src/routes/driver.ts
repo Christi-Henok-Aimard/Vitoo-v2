@@ -93,6 +93,26 @@ driverRouter.post('/tickets/validate', async (request, response) => {
   return response.json({ ticket: updated });
 });
 
+/** Incidents signalés par le chauffeur connecté, avec le trajet concerné. */
+driverRouter.get('/incidents', async (request, response) => {
+  const driver = await myDriver(request);
+  const incidents = await prisma.incident.findMany({
+    where: { driverId: driver.id },
+    include: { trip: true },
+    orderBy: { createdAt: 'desc' },
+  });
+  return response.json({
+    incidents: incidents.map((incident) => ({
+      id: incident.id,
+      type: incident.type,
+      description: incident.description,
+      resolved: incident.resolved,
+      createdAt: incident.createdAt,
+      tripLabel: `${incident.trip.depart} → ${incident.trip.arrivee}`,
+    })),
+  });
+});
+
 driverRouter.post('/incidents', async (request, response) => {
   const driver = await myDriver(request);
   const type = str(request.body?.type);

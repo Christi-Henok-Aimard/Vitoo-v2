@@ -1,6 +1,11 @@
 /** Point d'entrée : synchronisation schéma, admin bootstrap, scheduler, serveur. */
 import { app } from './app.js';
-import { assertProductionSecrets, hashPassword } from './auth.js';
+import {
+  assertProductionSecrets,
+  findUserByPhone,
+  hashPassword,
+  normalizePhone,
+} from './auth.js';
 import { prisma } from './db.js';
 import { startNotificationScheduler } from './notifications.js';
 
@@ -24,19 +29,36 @@ const autoPushSchema = async (): Promise<void> => {
   }
 };
 
-/** Crée le compte administrateur initial si aucun admin n'existe. */
+/** Crée le compte administrateur initial, ou promeut l'utilisateur existant. */
 const bootstrapAdmin = async (): Promise<void> => {
-  const phone = process.env.ADMIN_BOOTSTRAP_PHONE?.trim();
+  const rawPhone = process.env.ADMIN_BOOTSTRAP_PHONE?.trim();
   const password = process.env.ADMIN_BOOTSTRAP_PASSWORD;
-  if (!phone || !password) return;
+  if (!rawPhone || !password) return;
   if (await prisma.user.findFirst({ where: { role: 'admin' } })) return;
+  const phone = normalizePhone(rawPhone) || rawPhone;
   try {
+    const passwordHash = hashPassword(password);
+    const existing = await findUserByPhone(phone);
+    if (existing) {
+      // Un compte avec ce numéro existe déjà : on le promeut au lieu d'en créer un.
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          role: 'admin',
+          passwordHash,
+          ...(!existing.firstName ? { firstName: 'Admin' } : {}),
+          ...(!existing.lastName ? { lastName: 'Vitoo' } : {}),
+        },
+      });
+      console.log(`[boot] Utilisateur ${existing.phone} promu administrateur (bootstrap).`);
+      return;
+    }
     await prisma.user.create({
       data: {
         firstName: 'Admin',
         lastName: 'Vitoo',
         phone,
-        passwordHash: hashPassword(password),
+        passwordHash,
         role: 'admin',
         city: '',
         paymentMethods: JSON.stringify(['Espèces']),

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, CheckCheck, Star } from 'lucide-react';
 import { notificationsApi, errorMessage } from '../api';
 import { usePolling } from '../lib/hooks';
@@ -11,6 +12,7 @@ import type { Notification } from '../types';
 
 export function NotificationBell({ token, allowRating = false }: { token: string; allowRating?: boolean }) {
   const { toast, lang, t } = useApp();
+  const navigate = useNavigate();
   const [items, setItems] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -93,36 +95,55 @@ export function NotificationBell({ token, allowRating = false }: { token: string
               <div style={{ padding: 8 }}><Empty icon={Bell} title={t('noNotifications')} text={t('allGood')} /></div>
             ) : (
               items.map((n) => {
-                const text = localizedNotification(lang, n.type, { title: n.title, body: n.body });
+                const isDriverAdded = n.type === 'driver_added';
+                const text = isDriverAdded
+                  ? { title: t('driverAddedTitle'), body: `${n.title} ${t('driverAddedBody')}` }
+                  : localizedNotification(lang, n.type, { title: n.title, body: n.body });
                 return (
-                <button
+                <div
                   key={n.id}
-                  onClick={() => void markOne(n)}
                   style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
                     background: n.read ? 'transparent' : 'var(--primary-soft)',
-                    border: 0,
                     borderBottom: '1px solid var(--border)',
-                    padding: '12px 14px',
-                    cursor: 'pointer',
-                    color: 'var(--text)',
                   }}
                 >
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                    <span style={{ flex: 1 }}>
-                      <span style={{ display: 'block', fontWeight: 700, fontSize: 13 }}>{text.title}</span>
-                      <span style={{ display: 'block', color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>{text.body}</span>
-                    </span>
-                    {allowRating && n.type === 'arrived' && n.tripId && (
-                      <span className="badge badge-warning" style={{ flexShrink: 0 }}>
-                        <Star size={11} /> {t('rateTrip')}
+                  <button
+                    onClick={() => void markOne(n)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'transparent',
+                      border: 0,
+                      padding: '12px 14px 6px',
+                      cursor: 'pointer',
+                      color: 'var(--text)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <span style={{ flex: 1 }}>
+                        <span style={{ display: 'block', fontWeight: 700, fontSize: 13 }}>{text.title}</span>
+                        <span style={{ display: 'block', color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>{text.body}</span>
                       </span>
-                    )}
-                  </div>
-                  <span className="muted" style={{ fontSize: 11 }}>{relativeTime(n.createdAt)}</span>
-                </button>
+                      {allowRating && n.type === 'arrived' && n.tripId && (
+                        <span className="badge badge-warning" style={{ flexShrink: 0 }}>
+                          <Star size={11} /> {t('rateTrip')}
+                        </span>
+                      )}
+                    </div>
+                    <span className="muted" style={{ fontSize: 11 }}>{relativeTime(n.createdAt)}</span>
+                  </button>
+                  {isDriverAdded && (
+                    <div style={{ padding: '0 14px 12px' }}>
+                      <button
+                        className="btn btn-sm"
+                        onClick={() => { void markOne(n); setOpen(false); navigate('/driver/missions'); }}
+                      >
+                        {t('driverSpace')}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 );
               })
             )}
