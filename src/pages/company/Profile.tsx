@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Building2, CarFront, Globe2, LogOut, Moon, Palette, Sun, UserCog } from 'lucide-react';
+import { Building2, CarFront, LogOut, Moon, Palette, Sun, UserCog } from 'lucide-react';
 import { auth, errorMessage, parseList } from '../../api';
 import { PaymentChips } from '../../components/PaymentChips';
 import { useApp } from '../../lib/context';
@@ -9,7 +9,7 @@ import { updateCompanySessionUser } from '../../session';
 import { Field, Notice, PageHeader } from '../../lib/ui';
 
 export function CompanyProfilePage() {
-  const { companySession, theme, toggleTheme, lang, setLanguage, logoutCompany, toast } = useApp();
+  const { companySession, theme, toggleTheme, logoutCompany, toast } = useApp();
   const navigate = useNavigate();
   const u = companySession!.user;
   const [form, setForm] = useState({
@@ -123,22 +123,13 @@ export function CompanyProfilePage() {
               <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />} Thème sombre</span>
               <button className={`btn btn-sm ${theme === 'dark' ? 'btn-secondary' : ''}`} onClick={toggleTheme}>{theme === 'dark' ? 'Activé' : 'Désactivé'}</button>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
-              <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Globe2 size={16} /> Langue</span>
-              <select className="input" value={lang} onChange={(e) => setLanguage(e.target.value as typeof lang)} aria-label="Langue">
-                <option value="fr">Français</option>
-                <option value="en">English</option>
-                <option value="dyu">Dioula</option>
-                <option value="bci">Baoulé</option>
-              </select>
-            </div>
             <div className="divider" />
             <button className="btn btn-danger btn-block" onClick={() => { logoutCompany(); navigate('/company', { replace: true }); }}><LogOut size={16} /> Se déconnecter</button>
           </div>
 
           <div className="card card-pad" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <CarFront size={20} color="var(--primary)" />
-            <span className="muted" style={{ fontSize: 12 }}>Besoin d'aide ? Contactez support@vitoo.ci</span>
+            <span className="muted" style={{ fontSize: 12 }}>Besoin d'aide ? christhenokaimard@gmail.com · 01 02 21 80 53</span>
           </div>
         </div>
       </div>

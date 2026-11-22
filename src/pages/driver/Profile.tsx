@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ClipboardList, Globe2, LogOut, Moon, Sun, UserRound } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardList, LogOut, Moon, Sun, UserRound } from 'lucide-react';
 import { driverApi, errorMessage } from '../../api';
 import { useApp } from '../../lib/context';
 import { useAsync, usePolling } from '../../lib/hooks';
@@ -10,7 +10,7 @@ import { GridCards } from '../../components/AppShell';
 import type { DriverStats, Incident } from '../../types';
 
 export function DriverProfilePage() {
-  const { userSession, driverInfo, refreshDriverInfo, theme, toggleTheme, lang, setLanguage, logoutUser, toast } = useApp();
+  const { userSession, driverInfo, refreshDriverInfo, theme, toggleTheme, logoutUser, toast } = useApp();
   const navigate = useNavigate();
   const token = userSession!.token;
   const stats = useAsync(() => driverApi.stats(token), [token], {} as DriverStats);
@@ -57,15 +57,6 @@ export function DriverProfilePage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
             <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />} Thème sombre</span>
             <button className={`btn btn-sm ${theme === 'dark' ? 'btn-secondary' : ''}`} onClick={toggleTheme}>{theme === 'dark' ? 'Activé' : 'Désactivé'}</button>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-            <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Globe2 size={16} /> Langue</span>
-            <select className="input" value={lang} onChange={(e) => setLanguage(e.target.value as typeof lang)} aria-label="Langue">
-              <option value="fr">Français</option>
-              <option value="en">English</option>
-              <option value="dyu">Dioula</option>
-              <option value="bci">Baoulé</option>
-            </select>
           </div>
           <div className="divider" />
           <button className="btn btn-block" onClick={() => navigate('/passenger/profile')}>Retour au profil passager</button>

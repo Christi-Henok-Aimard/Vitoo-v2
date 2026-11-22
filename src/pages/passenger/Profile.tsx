@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Camera, CarFront, CircleHelp, Globe2, LogOut, Mail, Moon, Phone, ShieldCheck, Sun, UserRound } from 'lucide-react';
+import { Camera, CarFront, CircleHelp, LogOut, Mail, Moon, Phone, ShieldCheck, Sun, UserRound } from 'lucide-react';
 import { auth, errorMessage } from '../../api';
 import { useApp } from '../../lib/context';
 import { updateUserSessionUser } from '../../session';
@@ -14,7 +14,7 @@ const FAQ = [
   { q: 'Comment noter un trajet ?', a: 'Après l’arrivée, une notification apparaît dans la cloche. Cliquez sur « Noter le trajet » pour évaluer la compagnie et le chauffeur.' },
 ];
 
-/** Sélecteur de thème KBR ; le bouton natif reste comme repli visible. */
+/** Sélecteur de thème KBR (contrôle unique, sans doublon ni cadre). */
 function ThemeSwitch({ theme, toggleTheme }: { theme: 'light' | 'dark'; toggleTheme: () => void }) {
   const ref = useRef<KbrHandle | null>(null);
   useEffect(() => {
@@ -34,13 +34,14 @@ function ThemeSwitch({ theme, toggleTheme }: { theme: 'light' | 'dark'; toggleTh
       options="Clair, Sombre"
       selected={theme === 'dark' ? 'Sombre' : 'Clair'}
       appearance={kbrAppearance(theme)}
+      tray="false"
       aria-label="Thème de l'interface"
     />
   );
 }
 
 export function PassengerProfilePage() {
-  const { userSession, theme, toggleTheme, lang, setLanguage, logoutUser, toast } = useApp();
+  const { userSession, theme, toggleTheme, logoutUser, toast } = useApp();
   const navigate = useNavigate();
   const user = userSession!.user;
   const [firstName, setFirstName] = useState(user.firstName);
@@ -203,21 +204,7 @@ export function PassengerProfilePage() {
             <div className="label" style={{ marginBottom: 10 }}>Préférences</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{theme === 'dark' ? <Moon size={17} /> : <Sun size={17} />} Thème sombre</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <ThemeSwitch theme={theme} toggleTheme={toggleTheme} />
-                <button className="btn btn-sm" onClick={toggleTheme} aria-label="Inverser le thème">
-                  {theme === 'dark' ? 'Clair' : 'Sombre'}
-                </button>
-              </div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
-              <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Globe2 size={17} /> Langue</span>
-              <select className="input" value={lang} onChange={(e) => setLanguage(e.target.value as typeof lang)} aria-label="Langue">
-                <option value="fr">Français</option>
-                <option value="en">English</option>
-                <option value="dyu">Dioula</option>
-                <option value="bci">Baoulé</option>
-              </select>
+              <ThemeSwitch theme={theme} toggleTheme={toggleTheme} />
             </div>
             <div className="divider" />
             <button className="btn btn-danger btn-block" onClick={() => { logoutUser(); navigate('/passenger', { replace: true }); }}>
@@ -240,8 +227,8 @@ export function PassengerProfilePage() {
               appearance={kbrAppearance(theme)}
             />
             <div style={{ marginTop: 12, fontSize: 12 }} className="muted">
-              <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><Mail size={13} /> support@vitoo.ci</span>
-              <span style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}><Phone size={13} /> +225 00 00 00 00 00</span>
+              <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><Mail size={13} /> christhenokaimard@gmail.com</span>
+              <span style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}><Phone size={13} /> 01 02 21 80 53</span>
             </div>
           </div>
         </div>

@@ -105,10 +105,7 @@ function AuthLayout({
     <div className="auth-shell">
       <div className="auth-card">
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
-        <LanguageSwitch compact />
-      </div>
+          <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
           <LanguageSwitch compact />
         </div>
         <h2 style={{ fontSize: 22 }}>{title}</h2>
@@ -593,10 +590,7 @@ export function AdminLogin() {
       login={
         <>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
-        <LanguageSwitch compact />
-      </div>
+          <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
           <LanguageSwitch compact />
         </div>
           <h2>Administration</h2>
