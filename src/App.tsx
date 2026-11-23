@@ -77,6 +77,7 @@ function CompanyLayout() {
       profileTo="/company/profile"
       profileLabel={t('company')}
       accentColor={companySession?.user.primaryColor || undefined}
+      secondaryColor={companySession?.user.secondaryColor || undefined}
     >
       <Outlet />
     </AppShell>

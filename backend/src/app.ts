@@ -35,7 +35,7 @@ app.use(
 // Corps brut conservé pour la vérification HMAC du webhook GeniusPay.
 app.use(
   express.json({
-    limit: '1mb',
+    limit: '12mb',
     verify: (request, _response, body) => {
       (request as Request).rawBody = Buffer.from(body);
     },

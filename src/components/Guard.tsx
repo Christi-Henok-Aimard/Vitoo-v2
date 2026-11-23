@@ -13,7 +13,7 @@ export function Guard({ space, children }: { space: GuardSpace; children: ReactN
     if (!userSession) return <Navigate to={space === 'admin' ? '/admin' : '/passenger/login'} replace />;
     const isAdmin = userSession.user.role === 'admin';
     if (space === 'admin' && !isAdmin) return <Navigate to="/admin" replace />;
-    if (space === 'passenger' && isAdmin) return <Navigate to="/admin" replace />;
+    // Un admin peut aussi ouvrir son espace passager : pas de redirection forcée.
     return <>{children}</>;
   }
   if (space === 'company') {

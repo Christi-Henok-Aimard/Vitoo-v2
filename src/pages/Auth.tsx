@@ -89,7 +89,7 @@ function AuthLayout({
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+        <img className="auth-brand-logo" src="/vitoo-logo-white.png" alt="Vitoo" />
         <h2 style={{ fontSize: 22 }}>{title}</h2>
         <p className="muted" style={{ fontSize: 13, margin: '5px 0 20px' }}>{subtitle}</p>
         {children}
@@ -224,7 +224,7 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
 
   const loginForm = (
     <>
-      <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+      <img className="auth-brand-logo" src="/vitoo-logo-white.png" alt="Vitoo" />
       <h2>{t('login')}</h2>
       <p className="muted">{t('myTickets')} · {t('notifications')}</p>
       <ErrorBox error={error} />
@@ -254,7 +254,7 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
 
   const registerForm = (
     <>
-      <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+      <img className="auth-brand-logo" src="/vitoo-logo-white.png" alt="Vitoo" />
       <h2>{t('register')}</h2>
       <p className="muted">{t('welcome')}</p>
       <ErrorBox error={error} />
@@ -354,7 +354,7 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
 
   const loginForm = (
     <>
-      <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+      <img className="auth-brand-logo" src="/vitoo-logo-white.png" alt="Vitoo" />
       <h2>{t('companyLogin')}</h2>
       <p className="muted">{t('trips')} · {t('drivers')} · {t('totalTickets')}</p>
       <ErrorBox error={error} />
@@ -374,7 +374,7 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
 
   const registerForm = (
     <>
-      <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+      <img className="auth-brand-logo" src="/vitoo-logo-white.png" alt="Vitoo" />
       <h2>{`${t('register')} ${t('company')}`}</h2>
       <p className="muted">{t('welcome')}</p>
       <ErrorBox error={error} />
@@ -480,7 +480,7 @@ export function SpaceForgotPassword({ space }: { space: 'company' | 'admin' }) {
       subtitle={`${t('sendCode')} · ${isCompany ? t('email') : t('phone')}`}
       footer={<>{t('back')} <Link to={home}>{t('login')}</Link></>}
     >
-      <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+      <img className="auth-brand-logo" src="/vitoo-logo-white.png" alt="Vitoo" />
       <ErrorBox error={error} />
       {devCode && (
         <div style={{ marginBottom: 12 }}>
@@ -561,7 +561,7 @@ export function AdminLogin() {
       active={false}
       login={
         <>
-          <img className="auth-brand-logo" src="/vitoo-symbol.jpg" alt="Vitoo" />
+          <img className="auth-brand-logo" src="/vitoo-logo-white.png" alt="Vitoo" />
           <h2>{t('adminSpace')}</h2>
           <p className="muted">{t('adminOnly')}</p>
           <ErrorBox error={error} />

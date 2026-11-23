@@ -34,6 +34,7 @@ export function AppShell({
   profileLabel,
   profileTo,
   accentColor,
+  secondaryColor,
 }: {
   space: string;
   nav: NavItem[];
@@ -43,6 +44,7 @@ export function AppShell({
   profileLabel?: string;
   profileTo?: string;
   accentColor?: string;
+  secondaryColor?: string;
 }) {
   const { theme, toggleTheme, logoutUser, logoutCompany, userSession, companySession, t } = useApp();
   const navigate = useNavigate();
@@ -52,7 +54,7 @@ export function AppShell({
   const user = session?.user ?? null;
   const displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || t('profile');
   // En espace compagnie, l'en-tête arbore le logo de la compagnie (sinon le symbole Vitoo).
-  const headerLogo = space === 'company' ? companySession?.user.companyLogo || '/vitoo-symbol.jpg' : '/vitoo-symbol.jpg';
+  const headerLogo = space === 'company' ? companySession?.user.companyLogo || '/vitoo-logo-white.png' : '/vitoo-logo-white.png';
 
   const logout = () => {
     if (space === 'company') logoutCompany();
@@ -83,8 +85,26 @@ export function AppShell({
   );
 
   return (
-    <div className="min-h-screen" style={{ '--primary': accentColor } as CSSProperties}>
-      <header className="card" style={{ borderRadius: 0, borderWidth: '0 0 1px 0', position: 'sticky', top: 0, zIndex: 40 }}>
+    <div
+      className="min-h-screen"
+      style={{
+        '--primary': accentColor || '#0ea5e9',
+        '--company-accent': accentColor || '#0ea5e9',
+        '--company-secondary': secondaryColor || '#eaf6fd',
+      } as CSSProperties}
+    >
+      <header
+        className="card"
+        style={{
+          borderRadius: 0,
+          borderWidth: '0 0 2px 0',
+          borderBottomColor: 'var(--company-accent)',
+          background: 'color-mix(in srgb, var(--company-secondary) 32%, var(--surface))',
+          position: 'sticky',
+          top: 0,
+          zIndex: 40,
+        }}
+      >
         <div style={{ maxWidth: 1240, margin: '0 auto', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
           <Link to={`/${space === 'passenger' ? 'passenger' : space}`} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text)' }}>
             <img src={headerLogo} alt={space === 'company' ? (companySession?.user.companyName || 'Vitoo') : 'Vitoo'} style={{ width: 40, height: 40, borderRadius: 9, objectFit: 'contain', background: '#fff' }} />
@@ -133,7 +153,7 @@ export function AppShell({
 
       {space === 'company' && (
         <footer style={{ maxWidth: 1240, margin: '0 auto', padding: '0 18px 24px', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 12 }}>
-          <img src="/vitoo-symbol.jpg" alt="" style={{ width: 18, height: 18, borderRadius: 5, objectFit: 'cover' }} />
+          <img src="/vitoo-logo-white.png" alt="" style={{ width: 18, height: 18, borderRadius: 5, objectFit: 'cover' }} />
           <span>Vitoo</span>
         </footer>
       )}
