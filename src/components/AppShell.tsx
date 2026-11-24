@@ -54,7 +54,7 @@ export function AppShell({
   const user = session?.user ?? null;
   const displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || t('profile');
   // En espace compagnie, l'en-tête arbore le logo de la compagnie (sinon le symbole Vitoo).
-  const headerLogo = space === 'company' ? companySession?.user.companyLogo || '/vitoo-logo-white.png' : '/vitoo-logo-white.png';
+  const headerLogo = space === 'company' ? companySession?.user.companyLogo || '/vitoo-symbol.jpg' : '/vitoo-symbol.jpg';
 
   const logout = () => {
     if (space === 'company') logoutCompany();
@@ -153,7 +153,7 @@ export function AppShell({
 
       {space === 'company' && (
         <footer style={{ maxWidth: 1240, margin: '0 auto', padding: '0 18px 24px', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 12 }}>
-          <img src="/vitoo-logo-white.png" alt="" style={{ width: 18, height: 18, borderRadius: 5, objectFit: 'cover' }} />
+          <img src="/vitoo-symbol.jpg" alt="" style={{ width: 18, height: 18, borderRadius: 5, objectFit: 'cover' }} />
           <span>Vitoo</span>
         </footer>
       )}
