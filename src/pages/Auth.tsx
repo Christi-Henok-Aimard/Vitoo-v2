@@ -2,12 +2,36 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type Rea
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { AuthSplit } from '../components/AuthSplit';
-import { auth, errorMessage, type AuthResult } from '../api';
+import { kbrAppearance } from '../components/kbr';
+import { auth, errorMessage, verificationApi, type AuthResult } from '../api';
 import { useApp } from '../lib/context';
-import { makeUserSession } from '../session';
+import { makeUserSession, updateCompanySessionUser, updateUserSessionUser } from '../session';
 import { Field, Notice } from '../lib/ui';
 
 const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() || '';
+
+type VerifySpace = 'passenger' | 'company' | 'admin';
+
+/** Le serveur indique `verified: false` (au niveau de la réponse ou de l'utilisateur). */
+function needsVerification(result: AuthResult): boolean {
+  return result.verified === false || result.user.verified === false;
+}
+
+function verifyPath(
+  space: VerifySpace,
+  identifier: string,
+  code?: string,
+  next?: string | null,
+  channel?: 'sms' | 'email',
+): string {
+  const base = space === 'company' ? '/company/verify' : space === 'admin' ? '/admin/verify' : '/verify';
+  const q = new URLSearchParams();
+  q.set(space === 'company' ? 'email' : 'phone', identifier);
+  if (code) q.set('code', code);
+  if (next) q.set('next', next);
+  if (channel) q.set('channel', channel);
+  return `${base}?${q.toString()}`;
+}
 
 /* ---------------------- Google Identity Services ----------------------- */
 
@@ -112,6 +136,180 @@ function SpaceLinks() {
   );
 }
 
+/* -------------------------- Vérification OTP --------------------------- */
+
+/** Le composant KBR stocke la saisie dans `val` (certaines versions exposent `value`). */
+type KbrCodeInput = HTMLElement & { val?: string; value?: string };
+
+export function VerifyPage({ space }: { space: VerifySpace }) {
+  const { userSession, companySession, setUserSession, setCompanySession, toast, theme, t } = useApp();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const codeInputRef = useRef<HTMLElement | null>(null);
+
+  // Un admin redirigé par le Guard atterrit sur /verify : on déduit son espace réel.
+  const effectiveSpace: VerifySpace =
+    space === 'passenger' && userSession?.user.role === 'admin' ? 'admin' : space;
+  const queryChannel = params.get('channel');
+  const channel: 'sms' | 'email' =
+    queryChannel === 'email' || queryChannel === 'sms'
+      ? queryChannel
+      : effectiveSpace === 'company'
+        ? 'email'
+        : 'sms';
+
+  const identifier =
+    (effectiveSpace === 'company' ? params.get('email') : params.get('phone')) || '';
+  const loginTo =
+    effectiveSpace === 'company' ? '/company/login' : effectiveSpace === 'admin' ? '/admin' : '/passenger/login';
+
+  const [devCode, setDevCode] = useState(params.get('code') || '');
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  // Saisie native fiable : le code-input KBR s'ouvre en deux temps et prête à confusion.
+  const [fallback, setFallback] = useState(true);
+
+  /** Lecture prioritaire sur la propriété du custom element, avec repli sur l'état. */
+  const readCode = (): string => {
+    const el = codeInputRef.current as KbrCodeInput | null;
+    const fromElement = [el?.value, el?.val]
+      .filter((v): v is string => typeof v === 'string' && v.length > 0)
+      .sort((a, b) => b.length - a.length)[0];
+    return (fromElement || code).replace(/\D/g, '').slice(0, 4);
+  };
+
+  // Le code-input émet `complete` ({ code }) dès que les 4 chiffres sont saisis ;
+  // on écoute aussi `change` / `input` pour les versions qui exposent une valeur.
+  useEffect(() => {
+    const el = codeInputRef.current;
+    if (!el || fallback) return;
+    const capture = (event: Event) => {
+      const detail = (event as CustomEvent<{ code?: string; value?: string }>).detail;
+      const fromEvent = detail?.code ?? detail?.value;
+      const raw = typeof fromEvent === 'string' && fromEvent ? fromEvent : (el as KbrCodeInput).val || (el as KbrCodeInput).value || '';
+      if (raw) setCode(String(raw).replace(/\D/g, '').slice(0, 4));
+    };
+    const events = ['complete', 'change', 'input', 'verified'];
+    events.forEach((name) => el.addEventListener(name, capture));
+    return () => events.forEach((name) => el.removeEventListener(name, capture));
+  }, [fallback]);
+
+  const home = () =>
+    params.get('next') ||
+    (effectiveSpace === 'company'
+      ? '/company/overview'
+      : effectiveSpace === 'admin'
+        ? '/admin/dashboard'
+        : '/passenger');
+
+  const verify = async () => {
+    setError('');
+    const value = readCode();
+    if (value.length !== 4) {
+      setFallback(true);
+      setError(t('invalidCode'));
+      toast(t('invalidCode'), 'error');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res =
+        effectiveSpace === 'company'
+          ? await verificationApi.verifyCompany({ email: identifier, code: value })
+          : effectiveSpace === 'admin'
+            ? await verificationApi.verifyAdmin({ phone: identifier, code: value })
+            : await verificationApi.verifyPassenger({ phone: identifier, code: value });
+      if (res.code) setDevCode(res.code);
+      const verified = res.verified !== false;
+      const nextUser = { ...(res.user || {}), verified };
+      if (effectiveSpace === 'company') {
+        if (companySession) updateCompanySessionUser({ ...companySession.user, ...nextUser });
+        else if (res.token) setCompanySession({ token: res.token, user: nextUser as AuthResult['user'] });
+      } else {
+        if (userSession) updateUserSessionUser({ ...userSession.user, ...nextUser });
+        else if (res.token) setUserSession(makeUserSession({ token: res.token, user: nextUser as AuthResult['user'] }));
+      }
+      toast(t('verified'), 'success');
+      navigate(home(), { replace: true });
+    } catch (err) {
+      const message = errorMessage(err);
+      setError(message);
+      toast(t('invalidCode'), 'error');
+      setBusy(false);
+    }
+  };
+
+  const resend = async () => {
+    setError('');
+    if (!identifier) {
+      setError(t('invalidCode'));
+      return;
+    }
+    setBusy(true);
+    try {
+      const res =
+        effectiveSpace === 'company'
+          ? await verificationApi.resendCompany(identifier)
+          : effectiveSpace === 'admin'
+            ? await verificationApi.resendAdmin(identifier)
+            : await verificationApi.resendPassenger(identifier);
+      if (res.code) setDevCode(res.code);
+      toast(t('codeSent'), 'success');
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <AuthLayout
+      title={t('verifyTitle')}
+      subtitle={`${t('verifyText')} · ${t(channel === 'email' ? 'emailChannel' : 'smsChannel')}`}
+      footer={<>{t('back')} <Link to={loginTo}>{t('login')}</Link></>}
+    >
+      <ErrorBox error={error} />
+      {devCode && (
+        <div style={{ marginBottom: 12 }}>
+          <Notice tone="info">{t('code')} : <strong style={{ fontFamily: 'monospace' }}>{devCode}</strong></Notice>
+        </div>
+      )}
+      {fallback ? (
+        <Field label={t('verifyCode')} required>
+          <input
+            className="input"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={4}
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+          />
+        </Field>
+      ) : (
+        <div style={{ marginBottom: 16 }}>
+          <code-input
+            ref={codeInputRef}
+            length="4"
+            label={t('verifyCode')}
+            testCode={devCode}
+            test-code={devCode}
+            appearance={kbrAppearance(theme)}
+          />
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => void verify()}>
+          {busy ? t('loading') : t('verifyAction')}
+        </button>
+        <button className="btn btn-ghost" disabled={busy} onClick={() => void resend()}>
+          {t('resendCode')}
+        </button>
+      </div>
+    </AuthLayout>
+  );
+}
+
 /* --------------------------- Passager / Admin --------------------------- */
 
 export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' | 'reset' }) {
@@ -138,9 +336,16 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
   type Target = 'login' | 'register' | 'forgot' | 'reset';
 
   const finish = (result: AuthResult) => {
-    setUserSession(makeUserSession(result));
+    const unverified = needsVerification(result);
+    const user = { ...result.user, verified: !unverified };
+    setUserSession(makeUserSession({ ...result, user }));
+    if (unverified) {
+      const space = user.role === 'admin' ? 'admin' : 'passenger';
+      navigate(verifyPath(space, user.phone || phone.trim(), result.code, params.get('next'), result.verification?.channel), { replace: true });
+      return;
+    }
     toast(t('welcome'), 'success');
-    navigate(params.get('next') || (result.user.role === 'admin' ? '/admin' : '/passenger'), { replace: true });
+    navigate(params.get('next') || (user.role === 'admin' ? '/admin' : '/passenger'), { replace: true });
   };
 
   const run = async (target: Target) => {
@@ -343,7 +548,13 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
             email: form.email.trim(),
             password: form.password,
           });
-      setCompanySession(res);
+      const verified = !needsVerification(res);
+      const user = { ...res.user, verified };
+      setCompanySession({ token: res.token, user, driverSpace: res.driverSpace });
+      if (!verified) {
+        navigate(verifyPath('company', user.email || form.email.trim(), res.code, undefined, res.verification?.channel), { replace: true });
+        return;
+      }
       toast(t('welcome'), 'success');
       navigate('/company', { replace: true });
     } catch (err) {
@@ -547,7 +758,13 @@ export function AdminLogin() {
         setBusy(false);
         return;
       }
-      setUserSession(makeUserSession(res));
+      const verified = !needsVerification(res);
+      const user = { ...res.user, verified };
+      setUserSession(makeUserSession({ ...res, user }));
+      if (!verified) {
+        navigate(verifyPath('admin', user.phone || phone.trim(), res.code, undefined, res.verification?.channel), { replace: true });
+        return;
+      }
       toast(`${t('welcome')} ${t('adminSpace')}`, 'success');
       navigate('/admin', { replace: true });
     } catch (err) {

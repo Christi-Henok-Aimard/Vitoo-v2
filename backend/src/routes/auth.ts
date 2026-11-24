@@ -1,19 +1,23 @@
 /** Routes d'authentification : passager, compagnie et Google. */
 import { Router } from 'express';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import type { User } from '@prisma/client';
 import { prisma, isUniqueError } from '../db.js';
 import {
+  consumeVerificationCode,
   driverSpaceFor,
   findUserByPhone,
   hashPassword,
+  issueVerificationCode,
+  isValidVerificationCode,
   normalizePhone,
   publicUser,
   requireAuth,
   requireRole,
   signToken,
   validatePassword,
+  verificationChannelFor,
   verifyPassword,
   HttpError,
 } from '../auth.js';
@@ -32,7 +36,47 @@ const authPayload = async (user: User) => ({
   user: publicUser(user),
   token: signToken(user.id),
   driverSpace: await driverSpaceFor(user.id),
+  verified: user.verified,
+  verification: {
+    required: !user.verified,
+    channel: verificationChannelFor(user.role),
+  },
 });
+
+/** Bloc de vérification ajouté aux réponses d'inscription/connexion/vérification. */
+const verificationResponse = (user: User, code?: string) => ({
+  verified: user.verified,
+  verification: {
+    required: !user.verified,
+    channel: verificationChannelFor(user.role),
+    ...(code ? { code } : {}),
+  },
+  ...(code ? { code } : {}),
+});
+
+const handleError = (response: Response, error: unknown) =>
+  fail(
+    response,
+    error instanceof HttpError ? error.message : 'Erreur interne du serveur.',
+    error instanceof HttpError ? error.status : 500,
+  );
+
+/**
+ * À la connexion d'un compte non vérifié, on (ré)émet un code si l'ancien
+ * est absent ou expiré — notamment le compte admin créé au bootstrap.
+ */
+const refreshVerificationOnLogin = async (user: User): Promise<string | undefined> => {
+  if (user.verified) return undefined;
+  if (
+    user.verificationCode &&
+    user.verificationExpires &&
+    user.verificationExpires.getTime() > Date.now()
+  ) {
+    return undefined;
+  }
+  const { code } = await issueVerificationCode(user, verificationChannelFor(user.role));
+  return code;
+};
 
 // --- OTP ------------------------------------------------------------------
 
@@ -207,9 +251,20 @@ passengerAuthRouter.post('/register', async (request, response) => {
       phone,
       passwordHash: hashPassword(body.password),
       role: 'passenger',
+      verified: false,
     },
   });
-  return response.status(201).json(await authPayload(user));
+  let code: string | undefined;
+  try {
+    ({ code } = await issueVerificationCode(user, 'sms'));
+  } catch (error) {
+    // En production sans fournisseur SMS, on ne laisse pas de compte orphelin.
+    await prisma.user.delete({ where: { id: user.id } }).catch(() => undefined);
+    throw error;
+  }
+  return response
+    .status(201)
+    .json({ ...(await authPayload(user)), ...verificationResponse(user, code) });
 });
 
 passengerAuthRouter.post('/login', async (request, response) => {
@@ -218,7 +273,8 @@ passengerAuthRouter.post('/login', async (request, response) => {
   if (!user || typeof body.password !== 'string' || !verifyPassword(body.password, user.passwordHash)) {
     return fail(response, 'Numéro ou mot de passe incorrect.', 401);
   }
-  return response.json(await authPayload(user));
+  const code = await refreshVerificationOnLogin(user);
+  return response.json({ ...(await authPayload(user)), ...verificationResponse(user, code) });
 });
 
 /** Connexion Google : crée ou retrouve un passager, refuse les comptes compagnie. */
@@ -275,6 +331,8 @@ passengerAuthRouter.post('/google', async (request, response) => {
           provider: 'google',
           googleId: sub,
           role: 'passenger',
+          // Google a déjà vérifié l'adresse e-mail (email_verified contrôlé plus haut).
+          verified: true,
         },
       });
     } catch (error) {
@@ -286,6 +344,46 @@ passengerAuthRouter.post('/google', async (request, response) => {
     }
   }
   return response.json(await authPayload(user));
+});
+
+// --- Vérification du compte passager (SMS) --------------------------------
+
+passengerAuthRouter.post('/verify', async (request, response) => {
+  const body = request.body ?? {};
+  const phone = normalizePhone(body.phone);
+  const code = body.code;
+  if (!phone || !isValidVerificationCode(code)) {
+    return fail(response, 'Numéro ivoirien valide et code à 4 chiffres requis.');
+  }
+  const user = await findUserByPhone(phone);
+  if (!user) return fail(response, 'Aucun compte associé à ce numéro.', 404);
+  try {
+    const verifiedUser = await consumeVerificationCode(user.id, code);
+    return response.json({
+      message: 'Compte vérifié.',
+      ...verificationResponse(verifiedUser),
+      user: publicUser(verifiedUser),
+      token: signToken(verifiedUser.id),
+    });
+  } catch (error) {
+    return handleError(response, error);
+  }
+});
+
+passengerAuthRouter.post('/resend-code', async (request, response) => {
+  const phone = normalizePhone(request.body?.phone);
+  if (!phone) return fail(response, 'Numéro ivoirien valide requis.');
+  const user = await findUserByPhone(phone);
+  if (!user) return fail(response, 'Aucun compte associé à ce numéro.', 404);
+  if (user.verified) {
+    return response.json({ message: 'Compte déjà vérifié.', ...verificationResponse(user) });
+  }
+  try {
+    const { code } = await issueVerificationCode(user, verificationChannelFor(user.role));
+    return response.json({ message: 'Code envoyé.', ...verificationResponse(user, code) });
+  } catch (error) {
+    return handleError(response, error);
+  }
 });
 
 passengerAuthRouter.post('/forgot-password', async (request, response) => {
@@ -413,6 +511,61 @@ companyAuthRouter.post('/reset-password', async (request, response) => {
   );
 });
 
+// --- Vérification de l'administrateur (e-mail, identifiant = téléphone) ----
+
+const findAdminByPhone = async (phone: string): Promise<User | null> => {
+  const user = await findUserByPhone(phone);
+  return user?.role === 'admin' ? user : null;
+};
+
+const adminVerifyHandler = async (request: Request, response: Response) => {
+  const body = request.body ?? {};
+  const phone = normalizePhone(body.phone);
+  const code = body.code;
+  if (!phone || !isValidVerificationCode(code)) {
+    return fail(response, 'Numéro ivoirien valide et code à 4 chiffres requis.');
+  }
+  const user = await findAdminByPhone(phone);
+  if (!user) return fail(response, 'Aucun administrateur associé à ce numéro.', 404);
+  try {
+    const verifiedUser = await consumeVerificationCode(user.id, code);
+    return response.json({
+      message: 'Compte vérifié.',
+      ...verificationResponse(verifiedUser),
+      user: publicUser(verifiedUser),
+      token: signToken(verifiedUser.id),
+    });
+  } catch (error) {
+    return handleError(response, error);
+  }
+};
+
+const adminResendHandler = async (request: Request, response: Response) => {
+  const phone = normalizePhone(request.body?.phone);
+  if (!phone) return fail(response, 'Numéro ivoirien valide requis.');
+  const user = await findAdminByPhone(phone);
+  if (!user) return fail(response, 'Aucun administrateur associé à ce numéro.', 404);
+  if (user.verified) {
+    return response.json({ message: 'Compte déjà vérifié.', ...verificationResponse(user) });
+  }
+  try {
+    const { code } = await issueVerificationCode(user, 'email');
+    return response.json({ message: 'Code envoyé par e-mail.', ...verificationResponse(user, code) });
+  } catch (error) {
+    return handleError(response, error);
+  }
+};
+
+// Monté sur /api/auth : /api/auth/admin/verify et /api/auth/admin/resend-code.
+passengerAuthRouter.post('/admin/verify', adminVerifyHandler);
+passengerAuthRouter.post('/admin/resend-code', adminResendHandler);
+
+// Monté avant /api/admin (protégé) dans app.ts : /api/admin/verify et
+// /api/admin/resend-code restent publics.
+export const adminVerificationRouter = Router();
+adminVerificationRouter.post('/verify', adminVerifyHandler);
+adminVerificationRouter.post('/resend-code', adminResendHandler);
+
 passengerAuthRouter.post('/admin/forgot-password', async (request, response) => {
   const phone = normalizePhone(request.body?.phone);
   if (!phone) return fail(response, 'Numéro ivoirien valide requis.');
@@ -468,9 +621,19 @@ companyAuthRouter.post('/register', async (request, response) => {
       rccm: str(body.rccm) || null,
       taxId: str(body.taxId) || null,
       paymentMethods: JSON.stringify(normalizeMethods(body.paymentMethods ?? ['Espèces'])),
+      verified: false,
     },
   });
-  return response.status(201).json(await authPayload(user));
+  let code: string | undefined;
+  try {
+    ({ code } = await issueVerificationCode(user, 'email'));
+  } catch (error) {
+    await prisma.user.delete({ where: { id: user.id } }).catch(() => undefined);
+    throw error;
+  }
+  return response
+    .status(201)
+    .json({ ...(await authPayload(user)), ...verificationResponse(user, code) });
 });
 
 companyAuthRouter.post('/login', async (request, response) => {
@@ -485,7 +648,52 @@ companyAuthRouter.post('/login', async (request, response) => {
   ) {
     return fail(response, 'E-mail ou mot de passe incorrect.', 401);
   }
-  return response.json(await authPayload(user));
+  const code = await refreshVerificationOnLogin(user);
+  return response.json({ ...(await authPayload(user)), ...verificationResponse(user, code) });
+});
+
+// --- Vérification du compte compagnie (e-mail) ----------------------------
+
+companyAuthRouter.post('/verify', async (request, response) => {
+  const body = request.body ?? {};
+  const email = str(body.email);
+  const code = body.code;
+  if (!email || !isValidVerificationCode(code)) {
+    return fail(response, 'Adresse e-mail et code à 4 chiffres requis.');
+  }
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || user.role !== 'company') {
+    return fail(response, 'Aucune compagnie associée à cette adresse.', 404);
+  }
+  try {
+    const verifiedUser = await consumeVerificationCode(user.id, code);
+    return response.json({
+      message: 'Compte vérifié.',
+      ...verificationResponse(verifiedUser),
+      user: publicUser(verifiedUser),
+      token: signToken(verifiedUser.id),
+    });
+  } catch (error) {
+    return handleError(response, error);
+  }
+});
+
+companyAuthRouter.post('/resend-code', async (request, response) => {
+  const email = str(request.body?.email);
+  if (!email) return fail(response, 'Adresse e-mail requise.');
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || user.role !== 'company') {
+    return fail(response, 'Aucune compagnie associée à cette adresse.', 404);
+  }
+  if (user.verified) {
+    return response.json({ message: 'Compte déjà vérifié.', ...verificationResponse(user) });
+  }
+  try {
+    const { code } = await issueVerificationCode(user, 'email');
+    return response.json({ message: 'Code envoyé par e-mail.', ...verificationResponse(user, code) });
+  } catch (error) {
+    return handleError(response, error);
+  }
 });
 
 companyAuthRouter.get('/me', requireAuth, requireRole('company'), async (request, response) =>

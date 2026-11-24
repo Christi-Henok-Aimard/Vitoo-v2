@@ -29,6 +29,10 @@ model User {
   paymentMethods String  @default("[\"Espèces\"]")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  // Vérification du compte (4 chiffres, 10 minutes)
+  verified           Boolean   @default(false)
+  verificationCode   String?
+  verificationExpires DateTime?
   bookings      Booking[]
   notifications Notification[]
   ratings       Rating[]

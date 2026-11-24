@@ -3,7 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { HttpError } from './auth.js';
-import { passengerAuthRouter, companyAuthRouter } from './routes/auth.js';
+import { passengerAuthRouter, companyAuthRouter, adminVerificationRouter } from './routes/auth.js';
 import { tripsRouter } from './routes/trips.js';
 import { paymentsRouter } from './routes/payments.js';
 import { companyRouter } from './routes/company.js';
@@ -54,6 +54,8 @@ app.use('/api/payments', paymentsRouter);
 app.use('/api/company', companyRouter);
 app.use('/api/driver', driverRouter);
 app.use('/api/notifications', notificationsRouter);
+// Routes publiques de vérification admin, avant le middleware requireAuth de /api/admin.
+app.use('/api/admin', adminVerificationRouter);
 app.use('/api/admin', adminRouter);
 
 // Toute route /api inconnue → 404 JSON.

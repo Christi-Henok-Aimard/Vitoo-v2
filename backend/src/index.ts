@@ -1,9 +1,11 @@
 /** Point d'entrée : synchronisation schéma, admin bootstrap, scheduler, serveur. */
 import { app } from './app.js';
+import type { User } from '@prisma/client';
 import {
   assertProductionSecrets,
   findUserByPhone,
   hashPassword,
+  issueVerificationCode,
   normalizePhone,
 } from './auth.js';
 import { prisma } from './db.js';
@@ -29,42 +31,75 @@ const autoPushSchema = async (): Promise<void> => {
   }
 };
 
+/** Émet le code e-mail admin s'il manque ou s'il est expiré. */
+const issueAdminCodeIfNeeded = async (admin: User): Promise<void> => {
+  if (admin.verified) return;
+  if (
+    admin.verificationCode &&
+    admin.verificationExpires &&
+    admin.verificationExpires.getTime() > Date.now()
+  ) {
+    return;
+  }
+  try {
+    await issueVerificationCode(admin, 'email');
+    console.log('[boot] Code de vérification admin émis par e-mail.');
+  } catch (error) {
+    console.warn('[boot] Émission du code de vérification admin ignorée :', error);
+  }
+};
+
 /** Crée le compte administrateur initial, ou promeut l'utilisateur existant. */
 const bootstrapAdmin = async (): Promise<void> => {
   const rawPhone = process.env.ADMIN_BOOTSTRAP_PHONE?.trim();
   const password = process.env.ADMIN_BOOTSTRAP_PASSWORD;
   if (!rawPhone || !password) return;
-  if (await prisma.user.findFirst({ where: { role: 'admin' } })) return;
+  const email = process.env.ADMIN_BOOTSTRAP_EMAIL?.trim().toLowerCase() || null;
+
+  const existingAdmin = await prisma.user.findFirst({ where: { role: 'admin' } });
+  if (existingAdmin) {
+    await issueAdminCodeIfNeeded(existingAdmin);
+    return;
+  }
+
   const phone = normalizePhone(rawPhone) || rawPhone;
   try {
     const passwordHash = hashPassword(password);
     const existing = await findUserByPhone(phone);
+    let admin: User;
     if (existing) {
       // Un compte avec ce numéro existe déjà : on le promeut au lieu d'en créer un.
-      await prisma.user.update({
+      admin = await prisma.user.update({
         where: { id: existing.id },
         data: {
           role: 'admin',
           passwordHash,
+          verified: false,
+          verificationCode: null,
+          verificationExpires: null,
+          ...(email ? { email } : {}),
           ...(!existing.firstName ? { firstName: 'Admin' } : {}),
           ...(!existing.lastName ? { lastName: 'Vitoo' } : {}),
         },
       });
       console.log(`[boot] Utilisateur ${existing.phone} promu administrateur (bootstrap).`);
-      return;
+    } else {
+      admin = await prisma.user.create({
+        data: {
+          firstName: 'Admin',
+          lastName: 'Vitoo',
+          phone,
+          email,
+          passwordHash,
+          role: 'admin',
+          city: '',
+          paymentMethods: JSON.stringify(['Espèces']),
+          verified: false,
+        },
+      });
+      console.log('[boot] Compte administrateur initial créé.');
     }
-    await prisma.user.create({
-      data: {
-        firstName: 'Admin',
-        lastName: 'Vitoo',
-        phone,
-        passwordHash,
-        role: 'admin',
-        city: '',
-        paymentMethods: JSON.stringify(['Espèces']),
-      },
-    });
-    console.log('[boot] Compte administrateur initial créé.');
+    await issueAdminCodeIfNeeded(admin);
   } catch (error) {
     console.error('[boot] Admin bootstrap ignoré :', error);
   }

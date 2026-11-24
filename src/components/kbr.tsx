@@ -21,6 +21,7 @@ declare module 'react' {
       'accordion-list': KbrElementProps;
       'segmented-control': KbrElementProps;
       'select-menu': KbrElementProps;
+      'code-input': KbrElementProps;
     }
   }
 }
@@ -39,4 +40,7 @@ export interface KbrHandle extends HTMLElement {
   reset?: () => void;
   start?: (remaining?: number) => void;
   select?: (value: string) => void;
+  /** `code-input` conserve la saisie dans `val` (et expose parfois `value`). */
+  val?: string;
+  value?: string;
 }

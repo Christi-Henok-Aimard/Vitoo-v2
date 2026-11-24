@@ -84,7 +84,31 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 /* ------------------------------ Auth ------------------------------ */
 
-export type AuthResult = { user: User; token: string; driverSpace?: DriverSpace | null };
+export interface VerificationInfo {
+  required: boolean;
+  channel: 'sms' | 'email';
+}
+
+export type AuthResult = {
+  user: User;
+  token: string;
+  driverSpace?: DriverSpace | null;
+  /** Présent sur les réponses register/login : état de vérification et canal. */
+  verified?: boolean;
+  verification?: VerificationInfo;
+  /** En développement, le code de vérification est renvoyé pour les tests. */
+  code?: string;
+};
+
+/** Réponse des endpoints de vérification / renvoi de code. */
+export interface VerificationResult {
+  verified?: boolean;
+  user?: User;
+  token?: string;
+  message?: string;
+  /** Code renvoyé en développement uniquement. */
+  code?: string;
+}
 
 export type { PassengerLookup } from './types';
 
@@ -131,6 +155,28 @@ export const auth = {
   companyMe: (token: string) => request<{ user: User }>('/company/auth/me', { token }),
   patchCompanyMe: (token: string, body: Record<string, unknown>) =>
     request<{ user: User }>('/company/auth/me', { method: 'PATCH', token, body }),
+};
+
+/* -------------------------- Vérification OTP -------------------------- */
+
+export const verificationApi = {
+  // Passager (SMS)
+  verifyPassenger: (body: { phone: string; code: string }) =>
+    request<VerificationResult>('/auth/verify', { method: 'POST', body }),
+  resendPassenger: (phone: string) =>
+    request<VerificationResult>('/auth/resend-code', { method: 'POST', body: { phone } }),
+
+  // Compagnie (e-mail)
+  verifyCompany: (body: { email: string; code: string }) =>
+    request<VerificationResult>('/company/auth/verify', { method: 'POST', body }),
+  resendCompany: (email: string) =>
+    request<VerificationResult>('/company/auth/resend-code', { method: 'POST', body: { email } }),
+
+  // Administration
+  verifyAdmin: (body: { phone: string; code: string }) =>
+    request<VerificationResult>('/admin/verify', { method: 'POST', body }),
+  resendAdmin: (phone: string) =>
+    request<VerificationResult>('/admin/resend-code', { method: 'POST', body: { phone } }),
 };
 
 /* --------------------------- Trajets publics --------------------------- */

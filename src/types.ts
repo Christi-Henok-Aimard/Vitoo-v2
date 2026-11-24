@@ -24,6 +24,8 @@ export interface User {
   city?: string | null;
   avatarUrl?: string | null;
   role: Role;
+  /** Compte activé après vérification du code (SMS / e-mail). */
+  verified: boolean;
   companyName?: string | null;
   rccm?: string | null;
   taxId?: string | null;

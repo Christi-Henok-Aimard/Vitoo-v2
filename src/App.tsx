@@ -4,7 +4,7 @@ import { Guard } from './components/Guard';
 import { AppShell, type NavItem } from './components/AppShell';
 import { useApp } from './lib/context';
 import { Loading } from './lib/ui';
-import { AdminLogin, CompanyAuth, PassengerAuth, SpaceForgotPassword } from './pages/Auth';
+import { AdminLogin, CompanyAuth, PassengerAuth, SpaceForgotPassword, VerifyPage } from './pages/Auth';
 import { SearchPage } from './pages/passenger/Search';
 import { TripDetailPage } from './pages/passenger/TripDetail';
 import { BookingPage } from './pages/passenger/Booking';
@@ -118,6 +118,11 @@ export default function App() {
         <Route path="/passenger/register" element={<PassengerAuth mode="register" />} />
         <Route path="/passenger/forgot" element={<PassengerAuth mode="forgot" />} />
         <Route path="/passenger/reset" element={<PassengerAuth mode="reset" />} />
+
+        {/* Vérification des comptes — déclaré avant les routes protégées */}
+        <Route path="/verify" element={<VerifyPage space="passenger" />} />
+        <Route path="/company/verify" element={<VerifyPage space="company" />} />
+        <Route path="/admin/verify" element={<VerifyPage space="admin" />} />
 
         {/* Espace passager */}
         <Route path="/passenger" element={<Guard space="passenger"><PassengerLayout /></Guard>}>
