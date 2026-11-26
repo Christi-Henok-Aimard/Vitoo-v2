@@ -44,6 +44,12 @@ npm run dev          # http://localhost:5173
 
 La compagnie active ses moyens depuis son profil et ses trajets via des **boutons** : Espèces, Wave, Orange Money, MTN MoMo, Moov Money, Carte bancaire. Le passager ne voit que les moyens activés pour le trajet choisi. « Espèces » crée le billet immédiatement (paiement à l'embarquement) ; les autres moyens redirigent vers GeniusPay. Sans clés GeniusPay, le backend répond 503 volontairement — aucun faux billet n'est créé.
 
+## Déploiement actuel
+
+- Site : https://vitoo2.vercel.app
+- API : https://vitoo-api.onrender.com/api
+- Webhook GeniusPay : https://vitoo-api.onrender.com/api/payments/webhook/geniuspay
+
 ## Espace chauffeur et notifications
 
 Un passager devient chauffeur lorsqu'une compagnie cherche son numéro dans « Équipe & flotte » puis clique sur « Ajouter comme chauffeur ». Il reçoit alors une notification « Ajouté comme chauffeur » avec un bouton « Espace chauffeur » qui l'amène directement dans son espace. Le bouton reste aussi disponible dans son profil passager : il peut basculer entre ses deux espaces à tout moment.
