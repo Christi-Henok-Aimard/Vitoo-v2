@@ -21,7 +21,7 @@ export const IVORY_COAST_CITIES = [
   'Korhogo',
   'Man',
   'Mankono',
-  'M'Bahiakro',
+  "M'Bahiakro",
   'Oumé',
   'Séguéla',
   'Soubré',
