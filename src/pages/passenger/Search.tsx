@@ -7,6 +7,7 @@ import { useAsync } from '../../lib/hooks';
 import { companyName, formatDate, formatMoney, todayInput, tripStops } from '../../lib/format';
 import { Empty, ErrorView, Field, ListSkeleton, PageHeader, StatusBadge } from '../../lib/ui';
 import { kbrAppearance, type KbrHandle } from '../../components/kbr';
+import { IVORY_COAST_CITIES } from '../../cities';
 import type { Trip } from '../../types';
 
 export function TripCard({ trip }: { trip: Trip }) {
@@ -97,7 +98,6 @@ export function SearchPage() {
   const [searched, setSearched] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const cities = useAsync(() => tripsApi.cities(), [], { cities: [] as string[] });
   const companies = useAsync(() => tripsApi.companies(), [], { companies: [] as Array<string | { name?: string; companyName?: string }> });
   const trips = useAsync(() => tripsApi.list({}), [], { trips: [] as Trip[] });
 
@@ -124,12 +124,16 @@ export function SearchPage() {
         <form onSubmit={doSearch}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, alignItems: 'end' }}>
             <Field label={t('departure')}>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input className="input" list="vitoo-cities" placeholder="Abidjan" value={depart} onChange={(e) => setDepart(e.target.value)} />
-              </div>
+              <select className="input" value={depart} onChange={(e) => setDepart(e.target.value)}>
+                <option value="">Abidjan</option>
+                {IVORY_COAST_CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
+              </select>
             </Field>
             <Field label={t('arrival')}>
-              <input className="input" list="vitoo-cities" placeholder="Bouaké" value={arrivee} onChange={(e) => setArrivee(e.target.value)} />
+              <select className="input" value={arrivee} onChange={(e) => setArrivee(e.target.value)}>
+                <option value="">Bouaké</option>
+                {IVORY_COAST_CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
+              </select>
             </Field>
             <Field label={t('date')}>
               <input className="input" type="date" min={todayInput()} value={date} onChange={(e) => setDate(e.target.value)} />
@@ -139,7 +143,6 @@ export function SearchPage() {
             </button>
             <button className="btn btn-primary" type="submit"><SearchIcon size={16} /> {t('search')}</button>
           </div>
-          <datalist id="vitoo-cities">{cities.data.cities.map((c) => <option key={c} value={c} />)}</datalist>
           <datalist id="vitoo-companies">{companyList.map((c) => <option key={c} value={c} />)}</datalist>
           <div style={{ marginTop: 6 }}>
             <button className="btn btn-ghost btn-sm" type="button" onClick={() => setFiltersOpen((v) => !v)}>

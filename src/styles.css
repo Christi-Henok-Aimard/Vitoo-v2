@@ -808,6 +808,7 @@ status-pill { pointer-events: none; }
 .auth-split .auth-spaces { margin-top: 14px; font-size: 12px; text-align: center; }
 .auth-split.is-dark .split-form { background: var(--surface); }
 @media (max-width: 760px) {
+  .mobile-auth-switch { display: block; }
   .auth-split-shell { padding: 0; }
   .auth-split { min-height: auto; border-radius: 0; border: 0; box-shadow: none; }
   .auth-split .split-form {
@@ -828,6 +829,16 @@ status-pill { pointer-events: none; }
   .auth-split, .auth-split .split-form, .split-toggle, .split-toggle-inner, .split-panel { transition: none !important; }
   .auth-split.active .split-sign-up { animation: none; }
 }
+
+.mobile-auth-switch {
+  display: none;
+  text-align: center;
+  font-size: 13px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.mobile-auth-switch a { color: var(--primary); font-weight: 700; }
 
 /* ------------------------------- Responsive ----------------------------- */
 @media (max-width: 768px) {

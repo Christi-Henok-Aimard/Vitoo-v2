@@ -454,6 +454,7 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
         </>
       )}
       <div className="auth-spaces"><SpaceLinks /></div>
+      <div className="mobile-auth-switch">{t('noAccount')} <Link to="/passenger/register">{t('register')}</Link></div>
     </>
   );
 
@@ -488,6 +489,7 @@ export function PassengerAuth({ mode }: { mode: 'login' | 'register' | 'forgot' 
         </>
       )}
       <div className="auth-spaces"><SpaceLinks /></div>
+      <div className="mobile-auth-switch">{t('haveAccount')} <Link to="/passenger/login">{t('login')}</Link></div>
     </>
   );
 
@@ -580,6 +582,7 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
       <div style={{ textAlign: 'center', fontSize: 13, marginTop: 6 }}>
         <Link to="/company/forgot">{t('forgotPassword')}</Link>
       </div>
+      <div className="mobile-auth-switch">{t('noAccount')} <Link to="/company/register">{t('register')}</Link></div>
     </>
   );
 
@@ -608,6 +611,7 @@ export function CompanyAuth({ mode }: { mode: 'login' | 'register' }) {
         </button>
       </form>
       <div className="auth-spaces"><SpaceLinks /></div>
+      <div className="mobile-auth-switch">{t('haveAccount')} <Link to="/company/login">{t('login')}</Link></div>
     </>
   );
 
